@@ -7,7 +7,7 @@ import {
   createOsmBuildingsAsync, createWorldImageryAsync, createWorldTerrainAsync,
 } from "cesium";
 import "cesium/Build/Cesium/Widgets/widgets.css";
-import { altitudeM, movePosition, POSITION_UPDATE_INTERVAL_MS } from "../data/flightMath";
+import { altitudeM, cesiumHeadingFromTrackDeg, movePosition, POSITION_UPDATE_INTERVAL_MS } from "../data/flightMath";
 import { JFK } from "../data/locations";
 import { isLocalDevelopment } from "../data/setup";
 import type { Aircraft, AssetStatus, Location, MapKind, Trails } from "../types";
@@ -48,7 +48,8 @@ function planeImage(color: string) {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><path d="M20 3c1.7 0 2 2.2 2 4v8.5l13 8v3l-13-3.5v8l4 3V37l-6-1.7-6 1.7v-2.5l4-3v-8L5 26.5v-3l13-8V7c0-1.8.3-4 2-4Z" fill="${color}" stroke="#071523" stroke-width="1.6" stroke-linejoin="round"/></svg>`;
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
-const images = { live: planeImage("#e8f4f8"), stale: planeImage("#8498a7"), selected: planeImage("#d5ff36"), simulated: planeImage("#b39cff") };
+const markerImage = (color: string) => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5" fill="${color}" stroke="#071523" stroke-width="2"/><circle cx="12" cy="12" r="1.5" fill="#071523"/></svg>`)}`;
+const images = { live: planeImage("#e8f4f8"), stale: planeImage("#8498a7"), selected: planeImage("#d5ff36"), simulated: planeImage("#b39cff"), unknown: markerImage("#e8f4f8"), unknownSelected: markerImage("#d5ff36") };
 
 interface MotionState {
   latitude: number;
@@ -97,7 +98,9 @@ function aim(viewer: Viewer, kind: MapKind, location: Location, instant = false,
   }
 }
 function addOrUpdateBillboard(entity: Entity, aircraft: Aircraft, kind: MapKind, selected: boolean, modelReady: boolean) {
-  const image = selected ? images.selected : aircraft.kind === "simulated" ? images.simulated : aircraft.positionKind === "estimated" || aircraft.positionKind === "stale" ? images.stale : images.live;
+  const image = aircraft.trackDeg === null
+    ? selected ? images.unknownSelected : images.unknown
+    : selected ? images.selected : aircraft.kind === "simulated" ? images.simulated : aircraft.positionKind === "estimated" || aircraft.positionKind === "stale" ? images.stale : images.live;
   const billboard = entity.billboard ?? new BillboardGraphics();
   billboard.image = new ConstantProperty(image);
   billboard.rotation = new ConstantProperty(-CesiumMath.toRadians(aircraft.trackDeg ?? 0));
@@ -127,6 +130,8 @@ export const CesiumMap = forwardRef<MapHandle, Props>(function CesiumMap({ kind,
   boundsRef.current = onBounds;
   visibleRef.current = onVisibleIds;
   aircraftRef.current = aircraft;
+  const selectedIdRef = useRef(selectedId);
+  selectedIdRef.current = selectedId;
   const reportVisible = () => {
     const viewer = viewerRef.current;
     if (!viewer || !visibleRef.current) return;
@@ -147,8 +152,26 @@ export const CesiumMap = forwardRef<MapHandle, Props>(function CesiumMap({ kind,
   reportVisibleRef.current = reportVisible;
 
   useImperativeHandle(ref, () => ({
-    zoomIn: () => viewerRef.current?.camera.zoomIn(viewerRef.current.camera.positionCartographic.height * 0.3),
-    zoomOut: () => viewerRef.current?.camera.zoomOut(viewerRef.current.camera.positionCartographic.height * 0.4),
+    zoomIn: () => {
+      const viewer = viewerRef.current;
+      if (!viewer) return;
+      const selected = kind === "local" ? aircraftRef.current.find(item => item.id === selectedIdRef.current) : undefined;
+      const target = selected && selected.latitude !== null && selected.longitude !== null
+        ? Cartesian3.fromDegrees(selected.longitude, selected.latitude, altitudeM(selected)) : undefined;
+      const targetRange = target ? Cartesian3.distance(viewer.camera.positionWC, target) : undefined;
+      const distance = targetRange ? Math.min(Math.max(targetRange * 0.3, 25), 2_000) : viewer.camera.positionCartographic.height * 0.3;
+      viewer.camera.zoomIn(distance);
+    },
+    zoomOut: () => {
+      const viewer = viewerRef.current;
+      if (!viewer) return;
+      const selected = kind === "local" ? aircraftRef.current.find(item => item.id === selectedIdRef.current) : undefined;
+      const target = selected && selected.latitude !== null && selected.longitude !== null
+        ? Cartesian3.fromDegrees(selected.longitude, selected.latitude, altitudeM(selected)) : undefined;
+      const targetRange = target ? Cartesian3.distance(viewer.camera.positionWC, target) : undefined;
+      const distance = targetRange ? Math.min(Math.max(targetRange * 0.3, 25), 2_000) : viewer.camera.positionCartographic.height * 0.4;
+      viewer.camera.zoomOut(distance);
+    },
     reset: () => { const viewer = viewerRef.current; if (viewer) aim(viewer, kind, kind === "us" ? JFK : location, false, preview); },
     flyTo: target => { const viewer = viewerRef.current; if (viewer) aim(viewer, kind, target, false, preview); },
     focusAircraft: item => {
@@ -157,7 +180,7 @@ export const CesiumMap = forwardRef<MapHandle, Props>(function CesiumMap({ kind,
       if (kind === "us") viewer.camera.flyTo({ destination: Rectangle.fromDegrees(item.longitude - 0.7, item.latitude - 0.5, item.longitude + 0.7, item.latitude + 0.5), duration: 1.1 });
       else {
         const target = Cartesian3.fromDegrees(item.longitude, item.latitude, altitudeM(item));
-        viewer.camera.flyToBoundingSphere(new BoundingSphere(target, 0), { offset: new HeadingPitchRange(0, CesiumMath.toRadians(-65), 900), duration: 1.1 });
+        viewer.camera.flyToBoundingSphere(new BoundingSphere(target, 0), { offset: new HeadingPitchRange(0, CesiumMath.toRadians(-35), 425), duration: 1.1 });
       }
     },
     search: async query => {
@@ -304,7 +327,7 @@ export const CesiumMap = forwardRef<MapHandle, Props>(function CesiumMap({ kind,
       seen.add(key);
       let entity = entitiesRef.current.get(key);
       const altitudeAvailable = item.geoAltitudeM !== null || item.baroAltitudeM !== null;
-      const useModel = kind === "local" && modelReady && altitudeAvailable;
+      const useModel = kind === "local" && modelReady && altitudeAvailable && item.trackDeg !== null;
       const altitude = altitudeM(item);
       const position = Cartesian3.fromDegrees(item.longitude, item.latitude, altitude);
       if (!entity) {
@@ -350,8 +373,14 @@ export const CesiumMap = forwardRef<MapHandle, Props>(function CesiumMap({ kind,
       }
       if (useModel && !entity.model) {
         entity.model = new ModelGraphics({ uri: modelUrl, scale: 1 });
+      } else if (useModel && entity.model) {
+        entity.model.silhouetteSize = new ConstantProperty(0);
       } else if (!useModel && entity.model) entity.model = undefined;
-      entity.orientation = new ConstantProperty(Transforms.headingPitchRollQuaternion(position, new HeadingPitchRoll(CesiumMath.toRadians(item.trackDeg ?? 0), 0, 0)));
+      if (item.trackDeg !== null) {
+        entity.orientation = new ConstantProperty(Transforms.headingPitchRollQuaternion(position, new HeadingPitchRoll(cesiumHeadingFromTrackDeg(item.trackDeg), 0, 0)));
+      } else {
+        entity.orientation = undefined;
+      }
       addOrUpdateBillboard(entity, item, kind, selectedId === item.id, modelReady);
       entity.description = undefined;
     }

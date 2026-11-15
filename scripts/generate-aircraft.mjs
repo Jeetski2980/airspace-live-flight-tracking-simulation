@@ -1,61 +1,160 @@
-// AIRSPACE's original neutral aircraft model. Units are metres, glTF Y-up, nose faces -Z.
+// Original neutral twin-jet model. Metres, glTF Y-up, nose along +Z.
+// The +Z forward axis is required by Cesium's glTF model-axis correction.
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const materials = [
-  [0.72, 0.81, 0.86, 1], // fuselage
-  [0.31, 0.47, 0.58, 1], // wings and tail
-  [0.09, 0.20, 0.28, 1], // cockpit / engine intakes
-  [0.75, 0.89, 0.18, 1], // subtle wing tips
+  [0.94, 0.96, 0.97, 1], // pearl fuselage
+  [0.23, 0.37, 0.48, 1], // graphite-blue wing surfaces
+  [0.035, 0.12, 0.18, 1], // cockpit glass and engine inlets
+  [0.72, 0.91, 0.12, 1], // restrained wing-tip safety accents
+  [0.64, 0.74, 0.80, 1], // engine nacelles and trim
 ];
 const groups = materials.map(() => ({ position: [], normal: [] }));
-function triangle(a, b, c, material) {
+const normalize = v => {
+  const m = Math.hypot(...v) || 1;
+  return v.map(n => n / m);
+};
+function triangle(a, b, c, material, normals) {
   const u = b.map((v, i) => v - a[i]);
   const v = c.map((x, i) => x - a[i]);
-  const n = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
-  const length = Math.hypot(...n) || 1;
-  for (const p of [a, b, c]) {
+  const face = normalize([u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]]);
+  for (const [i, p] of [a, b, c].entries()) {
     groups[material].position.push(...p);
-    groups[material].normal.push(...n.map(x => x / length));
+    groups[material].normal.push(...(normals?.[i] ?? face));
   }
 }
-function quad(a, b, c, d, m) { triangle(a, b, c, m); triangle(a, c, d, m); }
-function prism(outline, y0, y1, m) {
+function quad(a, b, c, d, material, normals) {
+  triangle(a, b, c, material, normals && [normals[0], normals[1], normals[2]]);
+  triangle(a, c, d, material, normals && [normals[0], normals[2], normals[3]]);
+}
+function prism(outline, y0, y1, material) {
   for (let i = 1; i < outline.length - 1; i++) {
-    triangle([outline[0][0], y1, outline[0][1]], [outline[i][0], y1, outline[i][1]], [outline[i + 1][0], y1, outline[i + 1][1]], m);
-    triangle([outline[i + 1][0], y0, outline[i + 1][1]], [outline[i][0], y0, outline[i][1]], [outline[0][0], y0, outline[0][1]], m);
+    triangle([outline[0][0], y1, outline[0][1]], [outline[i][0], y1, outline[i][1]], [outline[i + 1][0], y1, outline[i + 1][1]], material);
+    triangle([outline[i + 1][0], y0, outline[i + 1][1]], [outline[i][0], y0, outline[i][1]], [outline[0][0], y0, outline[0][1]], material);
   }
   for (let i = 0; i < outline.length; i++) {
     const a = outline[i], b = outline[(i + 1) % outline.length];
-    quad([a[0], y0, a[1]], [b[0], y0, b[1]], [b[0], y1, b[1]], [a[0], y1, a[1]], m);
-  }
-}
-function tube(cx, cy, z0, z1, r0, r1, m, sides = 12) {
-  for (let i = 0; i < sides; i++) {
-    const a = 2 * Math.PI * i / sides, b = 2 * Math.PI * (i + 1) / sides;
-    quad([cx + r0 * Math.cos(a), cy + r0 * Math.sin(a), z0], [cx + r0 * Math.cos(b), cy + r0 * Math.sin(b), z0], [cx + r1 * Math.cos(b), cy + r1 * Math.sin(b), z1], [cx + r1 * Math.cos(a), cy + r1 * Math.sin(a), z1], m);
+    quad([a[0], y0, a[1]], [b[0], y0, b[1]], [b[0], y1, b[1]], [a[0], y1, a[1]], material);
   }
 }
 
-// A 39 m long, 36 m span generic twin-jet silhouette; no type or operator implied.
-const rings = [[-19.5, 0.08], [-18, 0.65], [-15, 1.25], [-10, 1.65], [0, 1.8], [10, 1.65], [15, 1.35], [18, 0.55], [19.5, 0.08]];
-for (let i = 0; i < rings.length - 1; i++) tube(0, 1.85, rings[i][0], rings[i + 1][0], rings[i][1], rings[i + 1][1], 0, 16);
-prism([[0, -8], [3.2, -6.9], [18, 4.2], [18, 6.2], [2.5, 2.5], [0, 3]], 1.48, 1.85, 1);
-prism([[0, -8], [-3.2, -6.9], [-18, 4.2], [-18, 6.2], [-2.5, 2.5], [0, 3]], 1.48, 1.85, 1);
-prism([[0, 13], [2, 12.8], [7.2, 17], [7.2, 18.2], [0, 16.7]], 1.75, 2.03, 1);
-prism([[0, 13], [-2, 12.8], [-7.2, 17], [-7.2, 18.2], [0, 16.7]], 1.75, 2.03, 1);
-quad([-0.17, 2.2, 12], [0.17, 2.2, 12], [0.12, 7.8, 18], [-0.12, 7.8, 18], 1);
-quad([0.17, 2.2, 12], [-0.17, 2.2, 12], [-0.12, 7.8, 18], [0.12, 7.8, 18], 1);
-for (const x of [-6.6, 6.6]) {
-  tube(x, 0.67, -3.3, 2.7, 0.78, 0.85, 0);
-  tube(x, 0.67, -3.33, -3.18, 0.68, 0.68, 2);
+// A smooth elliptical loft. Every station is [z, half-width, half-height, centre-y].
+function fuselage(stations, material, sides = 48, centerX = 0) {
+  for (let s = 0; s < stations.length - 1; s++) {
+    const [z0, rx0, ry0, cy0] = stations[s], [z1, rx1, ry1, cy1] = stations[s + 1];
+    for (let i = 0; i < sides; i++) {
+      const a = 2 * Math.PI * i / sides, b = 2 * Math.PI * (i + 1) / sides;
+      const point = (z, rx, ry, cy, angle) => [centerX + rx * Math.cos(angle), cy + ry * Math.sin(angle), z];
+      const normal = (rx, ry, dx, dy, angle) => normalize([ry * Math.cos(angle), rx * Math.sin(angle), -(dy * Math.sin(angle) + dx * Math.cos(angle)) * 0.5]);
+      const dx = (rx1 - rx0) / (z1 - z0), dy = (ry1 - ry0) / (z1 - z0);
+      const p00 = point(z0, rx0, ry0, cy0, a), p01 = point(z0, rx0, ry0, cy0, b);
+      const p11 = point(z1, rx1, ry1, cy1, b), p10 = point(z1, rx1, ry1, cy1, a);
+      quad(p00, p01, p11, p10, material, [normal(rx0, ry0, dx, dy, a), normal(rx0, ry0, dx, dy, b), normal(rx1, ry1, dx, dy, b), normal(rx1, ry1, dx, dy, a)]);
+    }
+  }
 }
-// Cockpit glazing and wing tips make orientation clear at close zoom.
-prism([[-0.9, -16.7], [0.9, -16.7], [1.35, -13.5], [-1.35, -13.5]], 3.10, 3.20, 2);
-prism([[17.45, 4.2], [18.05, 4.2], [18.05, 6.2], [17.45, 6.2]], 1.48, 1.9, 3);
-prism([[-18.05, 4.2], [-17.45, 4.2], [-17.45, 6.2], [-18.05, 6.2]], 1.48, 1.9, 3);
+
+// Swept, subtly cambered wing surface, mirrored about the fuselage centreline.
+function wing(side, { span, rootLeading, rootTrailing, tipLeading, tipTrailing, y, material }) {
+  const spanSteps = Math.ceil(span / 0.7), chordSteps = 10;
+  for (let i = 0; i < spanSteps; i++) {
+    const u0 = i / spanSteps, u1 = (i + 1) / spanSteps;
+    const x0 = side * span * u0, x1 = side * span * u1;
+    const lead0 = rootLeading + (tipLeading - rootLeading) * u0, lead1 = rootLeading + (tipLeading - rootLeading) * u1;
+    const trail0 = rootTrailing + (tipTrailing - rootTrailing) * u0, trail1 = rootTrailing + (tipTrailing - rootTrailing) * u1;
+    for (let j = 0; j < chordSteps; j++) {
+      const v0 = j / chordSteps, v1 = (j + 1) / chordSteps;
+      const chord0 = trail0 - lead0, chord1 = trail1 - lead1;
+      const at = (x, lead, chord, v) => {
+        const camber = 0.13 * Math.sin(Math.PI * v);
+        const thickness = 0.035 * chord * Math.sin(Math.PI * v);
+        return [x, y + camber + thickness, lead - chord * v];
+      };
+      const upper = [at(x0, lead0, chord0, v0), at(x1, lead1, chord1, v0), at(x1, lead1, chord1, v1), at(x0, lead0, chord0, v1)];
+      const upperNormals = upper.map(() => side < 0 ? [0, 1, 0] : [0, 1, 0]);
+      quad(...upper, material, upperNormals);
+      const lower = upper.map(([x, yy, z]) => [x, 2 * y - yy, z]);
+      quad(lower[3], lower[2], lower[1], lower[0], material, lower.map(() => [0, -1, 0]));
+    }
+  }
+  // Close the wing edges with a thin, darker airfoil band.
+  const outline = [[0, rootLeading], [side * span, tipLeading], [side * span, tipTrailing], [0, rootTrailing]];
+  for (let i = 0; i < outline.length; i++) {
+    const [x0, z0] = outline[i], [x1, z1] = outline[(i + 1) % outline.length];
+    const chord0 = Math.abs(rootTrailing - rootLeading) + (Math.abs(tipTrailing - tipLeading) - Math.abs(rootTrailing - rootLeading)) * Math.abs(x0) / span;
+    const chord1 = Math.abs(rootTrailing - rootLeading) + (Math.abs(tipTrailing - tipLeading) - Math.abs(rootTrailing - rootLeading)) * Math.abs(x1) / span;
+    const t0 = Math.min(0.38, chord0 * 0.035), t1 = Math.min(0.38, chord1 * 0.035);
+    quad([x0, y - t0, z0], [x1, y - t1, z1], [x1, y + t1, z1], [x0, y + t0, z0], material);
+  }
+}
+
+// 39 m body length, 36 m wingspan. Nose is +Z; wing tips extend to +/-18 m.
+fuselage([
+  [-19.5, 0.06, 0.07, 1.72], [-18.6, 0.38, 0.42, 1.72], [-16.5, 0.82, 0.78, 1.72],
+  [-13, 1.12, 1.02, 1.72], [-8, 1.42, 1.22, 1.72], [-2, 1.52, 1.3, 1.72],
+  [5, 1.48, 1.27, 1.72], [10, 1.25, 1.07, 1.72], [14, 0.91, 0.78, 1.72],
+  [17, 0.53, 0.48, 1.72], [19.5, 0.04, 0.04, 1.72],
+], 0, 48);
+
+for (const side of [-1, 1]) {
+  wing(side, { span: 18, rootLeading: 6.2, rootTrailing: -7, tipLeading: 0.2, tipTrailing: -3.7, y: 1.58, material: 1 });
+  // Horizontal stabilizer: shorter span, stronger sweep, near the tail.
+  wing(side, { span: 7.4, rootLeading: -13.3, rootTrailing: -18.5, tipLeading: -16.4, tipTrailing: -18.9, y: 2.0, material: 1 });
+
+  // Slim swept winglet.
+  const x = side * 17.65;
+  quad([x, 1.58, -3.7], [side * 18, 1.58, -3.55], [side * 17.82, 3.45, -1.7], [x, 3.05, -2.15], 1);
+  quad([side * 18, 1.58, -3.55], [x, 1.58, -3.7], [x, 3.05, -2.15], [side * 17.82, 3.45, -1.7], 1);
+  quad([side * 17.84, 1.55, -1.5], [side * 18, 1.55, -1.5], [side * 18, 1.59, -0.5], [side * 17.84, 1.59, -0.5], 3);
+
+  // Under-wing pylons and smooth turbofan nacelles; the inlets face the nose (+Z).
+  prism([[side * 5.0, 1.35], [side * 7.8, 1.35], [side * 7.2, -1.5], [side * 5.4, -1.5]], 0.9, 1.52, 4);
+  fuselage([
+    [-4.2, 0.52, 0.52, 0.61], [-3.8, 0.66, 0.64, 0.61], [-3.2, 0.72, 0.68, 0.61],
+    [-1.8, 0.76, 0.72, 0.61], [0.8, 0.76, 0.72, 0.61], [2.4, 0.69, 0.66, 0.61],
+    [3.0, 0.54, 0.52, 0.61], [3.1, 0.48, 0.46, 0.61],
+  ], 4, 32, side * 6.6);
+  // Dark recessed fan opening, surrounded by a metallic inlet lip.
+  const inletX = side * 6.6, inletY = 0.61, inletR = 0.49, inletZ = 3.06;
+  for (let i = 0; i < 32; i++) {
+    const a = 2 * Math.PI * i / 32, b = 2 * Math.PI * (i + 1) / 32;
+    triangle([inletX, inletY, inletZ], [inletX + inletR * Math.cos(a), inletY + inletR * Math.sin(a), inletZ], [inletX + inletR * Math.cos(b), inletY + inletR * Math.sin(b), inletZ], 2, [[0, 0, 1], [0, 0, 1], [0, 0, 1]]);
+    quad([inletX + 0.49 * Math.cos(a), inletY + 0.49 * Math.sin(a), inletZ], [inletX + 0.55 * Math.cos(a), inletY + 0.55 * Math.sin(a), inletZ], [inletX + 0.55 * Math.cos(b), inletY + 0.55 * Math.sin(b), inletZ], [inletX + 0.49 * Math.cos(b), inletY + 0.49 * Math.sin(b), inletZ], 4);
+  }
+}
+
+// Swept vertical fin with a broad root and narrow tip.
+const finSide = 0.16;
+const finOutline = [[-17.5, 1.9], [-11.6, 2.5], [-15.4, 7.2], [-17.2, 6.6]];
+for (const side of [-1, 1]) {
+  for (let i = 1; i < finOutline.length - 1; i++) {
+    const [[z0, y0], [z1, y1], [z2, y2]] = [finOutline[0], finOutline[i], finOutline[i + 1]];
+    triangle([side * finSide, y0, z0], [side * finSide, y1, z1], [side * finSide, y2, z2], 1);
+  }
+}
+for (let i = 0; i < finOutline.length; i++) {
+  const [z0, y0] = finOutline[i], [z1, y1] = finOutline[(i + 1) % finOutline.length];
+  quad([-finSide, y0, z0], [finSide, y0, z0], [finSide, y1, z1], [-finSide, y1, z1], 1);
+}
+
+// Dark cockpit glazing on the sloped front crown and small, evenly spaced cabin windows.
+quad([-0.72, 2.74, 15.0], [-0.12, 3.02, 17.1], [-0.12, 3.08, 17.6], [-0.78, 2.87, 16.4], 2);
+quad([0.12, 3.02, 17.1], [0.72, 2.74, 15.0], [0.78, 2.87, 16.4], [0.12, 3.08, 17.6], 2);
+for (const side of [-1, 1]) {
+  for (let i = 0; i < 11; i++) {
+    const z = -7.2 + i * 1.45;
+    const x = side * (1.35 - Math.max(0, z - 4) * 0.035);
+    const y = 2.14;
+    quad([x, y, z], [x, y, z + 0.74], [x, y + 0.3, z + 0.74], [x, y + 0.3, z], 2);
+  }
+}
+
+// Small neutral wingtip accents reinforce the aircraft's direction at close zoom.
+prism([[16.9, -0.35], [17.7, -0.42], [17.7, -3.85], [16.9, -3.68]], 1.56, 1.66, 3);
+prism([[-17.7, -0.42], [-16.9, -0.35], [-16.9, -3.68], [-17.7, -3.85]], 1.56, 1.66, 3);
 
 const chunks = [], bufferViews = [], accessors = [], primitives = [];
 let offset = 0;
@@ -66,8 +165,12 @@ function accessor(values, target, minmax = false) {
   offset += data.length;
   const entry = { bufferView: view, componentType: 5126, count: values.length / 3, type: "VEC3" };
   if (minmax) {
-    entry.min = [0, 1, 2].map(i => Math.min(...values.filter((_, n) => n % 3 === i)));
-    entry.max = [0, 1, 2].map(i => Math.max(...values.filter((_, n) => n % 3 === i)));
+    entry.min = [Infinity, Infinity, Infinity];
+    entry.max = [-Infinity, -Infinity, -Infinity];
+    for (let i = 0; i < values.length; i += 3) for (let axis = 0; axis < 3; axis++) {
+      entry.min[axis] = Math.min(entry.min[axis], values[i + axis]);
+      entry.max[axis] = Math.max(entry.max[axis], values[i + axis]);
+    }
   }
   return accessors.push(entry) - 1;
 }
@@ -78,9 +181,8 @@ groups.forEach((group, material) => {
 });
 const gltf = {
   asset: { version: "2.0", generator: "AIRSPACE original generic twin-jet mesh, 2026" },
-  scene: 0, scenes: [{ nodes: [0] }], nodes: [{ mesh: 0 }],
-  meshes: [{ primitives }],
-  materials: materials.map(c => ({ doubleSided: true, pbrMetallicRoughness: { baseColorFactor: c, metallicFactor: 0.13, roughnessFactor: 0.7 } })),
+  scene: 0, scenes: [{ nodes: [0] }], nodes: [{ mesh: 0 }], meshes: [{ primitives }],
+  materials: materials.map((c, i) => ({ doubleSided: true, pbrMetallicRoughness: { baseColorFactor: c, metallicFactor: i === 0 || i === 4 ? 0.28 : 0.12, roughnessFactor: i === 2 ? 0.28 : 0.54 } })),
   buffers: [{ byteLength: offset }], bufferViews, accessors,
 };
 const json = Buffer.from(JSON.stringify(gltf));
@@ -93,4 +195,4 @@ binHeader.writeUInt32LE(binary.length, 0); binHeader.writeUInt32LE(0x004e4942, 4
 const dest = join(root, "public/models/airspace-generic.glb");
 await mkdir(dirname(dest), { recursive: true });
 await writeFile(dest, Buffer.concat([header, jsonHeader, jsonPadded, binHeader, binary]));
-console.log("Generated original generic aircraft model.");
+console.log("Generated original, smooth generic twin-jet model (39 m x 36 m).");

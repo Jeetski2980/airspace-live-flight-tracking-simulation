@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { displayLivePosition } from "./flightMath.ts";
+import { cesiumHeadingFromTrackDeg, displayLivePosition } from "./flightMath.ts";
 
 const sample = (overrides = {}) => ({
   id: "a1b2c3", callsign: null, originCountry: null, latitude: 40.64, longitude: -73.78,
@@ -32,4 +32,12 @@ test("positions without a usable speed or track are never estimated", () => {
   assert.equal(aircraft.positionKind, "measured");
   assert.equal(aircraft.latitude, 40.64);
   assert.equal(aircraft.longitude, -73.78);
+});
+
+test("Cesium aircraft heading matches clockwise track bearings", () => {
+  const expected = [[0, -Math.PI / 2], [90, 0], [180, Math.PI / 2], [270, Math.PI]];
+  for (const [track, heading] of expected) {
+    assert.ok(Math.abs(cesiumHeadingFromTrackDeg(track) - heading) < 1e-12);
+  }
+  assert.equal(cesiumHeadingFromTrackDeg(360), cesiumHeadingFromTrackDeg(0));
 });

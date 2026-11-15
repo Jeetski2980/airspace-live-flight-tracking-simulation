@@ -3,6 +3,12 @@ import type { Aircraft } from "../types";
 const EARTH_RADIUS_M = 6_371_000;
 export const POSITION_UPDATE_INTERVAL_MS = 10_000;
 const MAX_ESTIMATED_POSITION_AGE_SECONDS = 180;
+// Cesium's default glTF correction points a +Z-forward model along local +X (east).
+// HeadingPitchRoll rotates +X clockwise from east, while ADS-B track is clockwise from north.
+export function cesiumHeadingFromTrackDeg(trackDeg: number) {
+  const normalizedTrack = ((trackDeg % 360) + 360) % 360;
+  return (normalizedTrack - 90) * Math.PI / 180;
+}
 export function movePosition(lat: number, lon: number, headingDeg: number, distanceM: number) {
   const bearing = headingDeg * Math.PI / 180;
   const latitude = lat * Math.PI / 180;
