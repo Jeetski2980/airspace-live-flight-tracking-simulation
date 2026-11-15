@@ -14,6 +14,7 @@ const eventLabels: Record<EventType, string> = { none: "No event", runway_closur
 const formatTime = (value: number | null) => value ? new Date(value).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "Unavailable";
 const formatAge = (value: number | null, now = Date.now()) => value ? `${Math.max(0, Math.round((now - value) / 1000))}s ago` : "Unavailable";
 const areaCacheKey = (kind: MapKind, place: Location) => kind === "us" ? "us" : `local:${Math.round(place.lat * 5) / 5}:${Math.round(place.lon * 5) / 5}`;
+const areaQuery = (kind: MapKind, place: Location) => kind === "us" ? "area=us" : `area=local&lat=${Math.round(place.lat * 5) / 5}&lon=${Math.round(place.lon * 5) / 5}`;
 const defaultAssets: AssetStatus = { imagery: "loading", terrain: "loading", buildings: "loading", model: "loading", message: null };
 const initialQuery = new URLSearchParams(window.location.search);
 
@@ -81,7 +82,7 @@ export function Portal() {
   useEffect(() => {
     if (mode !== "live" || replay) { setPolling(mode === "simulation" ? "paused · simulation active" : "paused · replay active"); return; }
     let cancelled = false, timer: number | undefined;
-    const area = mapKind === "us" ? "area=us" : `area=local&lat=${location.lat}&lon=${location.lon}`;
+    const area = areaQuery(mapKind, location);
     const cacheKey = areaCacheKey(mapKind, location);
     async function load() {
       if (cancelled || document.hidden) return;
@@ -172,7 +173,7 @@ export function Portal() {
     if (replay) { setReplay(false); setReplayPlaying(false); return; }
     setReplayMessage("Loading locally captured frames…");
     try {
-      const area = mapKind === "us" ? "area=us" : `area=local&lat=${location.lat}&lon=${location.lon}`;
+      const area = areaQuery(mapKind, location);
       const cacheKey = areaCacheKey(mapKind, location);
       let serverFrames: ReplayFrame[] = [];
       try {

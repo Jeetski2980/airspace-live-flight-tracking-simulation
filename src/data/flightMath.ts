@@ -15,7 +15,11 @@ export function movePosition(lat: number, lon: number, headingDeg: number, dista
 export function displayLivePosition(aircraft: Aircraft, nowMs: number, stale: boolean): Aircraft {
   const age = aircraft.positionTime === null ? Infinity : nowMs / 1000 - aircraft.positionTime;
   if (stale) return { ...aircraft, positionKind: "stale" };
-  if (aircraft.latitude === null || aircraft.longitude === null || aircraft.groundSpeedMs === null || aircraft.trackDeg === null || age < 0 || age > MAX_ESTIMATED_POSITION_AGE_SECONDS) {
+  if (aircraft.latitude === null || aircraft.longitude === null) {
+    return { ...aircraft, positionKind: "measured" };
+  }
+  if (age > MAX_ESTIMATED_POSITION_AGE_SECONDS) return { ...aircraft, positionKind: "stale" };
+  if (aircraft.groundSpeedMs === null || aircraft.trackDeg === null || age < 0) {
     return { ...aircraft, positionKind: "measured" };
   }
   const next = movePosition(aircraft.latitude, aircraft.longitude, aircraft.trackDeg, Math.max(0, age) * aircraft.groundSpeedMs);

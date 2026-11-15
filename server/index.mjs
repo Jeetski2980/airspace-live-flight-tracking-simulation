@@ -3,8 +3,8 @@ import { pathToFileURL } from "node:url";
 import { areaFromQuery, getLive, getReplay } from "./opensky.mjs";
 import { aiStatus, askAssistant } from "./ai.mjs";
 
-function json(res, status, payload) {
-  res.writeHead(status, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" });
+function json(res, status, payload, headers = {}) {
+  res.writeHead(status, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff", ...headers });
   res.end(JSON.stringify(payload));
 }
 async function readJson(req) {
@@ -21,7 +21,14 @@ export async function handleApi(req, res) {
     if (req.method === "GET" && url.pathname === "/api/status") {
       return json(res, 200, { server: "ok", ai: aiStatus(), openskyConfigured: Boolean(process.env.OPENSKY_CLIENT_ID?.trim() && process.env.OPENSKY_CLIENT_SECRET?.trim() && !process.env.OPENSKY_CLIENT_ID.startsWith("your_") && !process.env.OPENSKY_CLIENT_SECRET.startsWith("your_")) });
     }
-    if (req.method === "GET" && url.pathname === "/api/live") return json(res, 200, await getLive(areaFromQuery(url.searchParams)));
+    if (req.method === "GET" && url.pathname === "/api/live") {
+      const live = await getLive(areaFromQuery(url.searchParams));
+      const cacheSeconds = live.configured && typeof live.nextPollAt === "number"
+        ? Math.max(1, Math.ceil((live.nextPollAt - Date.now()) / 1000))
+        : 0;
+      const headers = cacheSeconds ? { "Vercel-CDN-Cache-Control": `public, s-maxage=${cacheSeconds}` } : {};
+      return json(res, 200, live, headers);
+    }
     if (req.method === "GET" && url.pathname === "/api/replay") return json(res, 200, getReplay(areaFromQuery(url.searchParams)));
     if (req.method === "POST" && url.pathname === "/api/assistant") {
       const result = await askAssistant(await readJson(req));

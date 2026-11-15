@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { areaFromQuery, getLive, normalizeState } from "./opensky.mjs";
 import { askAssistant } from "./ai.mjs";
+import { handleApi } from "./index.mjs";
 
 test("OpenSky state vectors retain observed fields and leave missing values unavailable", () => {
   const row = ["A1B2C3", " TEST42 ", "United States", 1_700_000_000, 1_700_000_001,
@@ -89,6 +90,42 @@ test("OpenSky OAuth2 stays server-side and a normalized snapshot is cached", asy
     assert.equal(second.snapshotTime, first.snapshotTime);
     assert.equal(calls.length, 2);
     assert.equal(JSON.stringify(first).includes("test_secret"), false);
+  } finally {
+    globalThis.fetch = oldFetch;
+    if (oldOpenSkyId === undefined) delete process.env.OPENSKY_CLIENT_ID;
+    else process.env.OPENSKY_CLIENT_ID = oldOpenSkyId;
+    if (oldOpenSkySecret === undefined) delete process.env.OPENSKY_CLIENT_SECRET;
+    else process.env.OPENSKY_CLIENT_SECRET = oldOpenSkySecret;
+  }
+});
+
+test("live API CDN caching follows the next safe OpenSky polling time", async () => {
+  const oldOpenSkyId = process.env.OPENSKY_CLIENT_ID;
+  const oldOpenSkySecret = process.env.OPENSKY_CLIENT_SECRET;
+  const oldFetch = globalThis.fetch;
+  try {
+    process.env.OPENSKY_CLIENT_ID = "test_client";
+    process.env.OPENSKY_CLIENT_SECRET = "test_secret";
+    globalThis.fetch = async url => String(url).includes("/openid-connect/token")
+      ? new Response(JSON.stringify({ access_token: "test-token", expires_in: 1800 }), { status: 200 })
+      : new Response(JSON.stringify({ time: Math.floor(Date.now() / 1000), states: [] }), {
+          status: 200, headers: { "X-Rate-Limit-Remaining": "3000" },
+        });
+    const req = { method: "GET", url: "/api/live?area=local&lat=35&lon=-120" };
+    const res = {
+      writeHead(status, headers) { this.status = status; this.headers = headers; },
+      end(body) { this.body = body; },
+    };
+    await handleApi(req, res);
+    const live = JSON.parse(res.body);
+    assert.equal(res.status, 200);
+    assert.equal(live.state, "connected");
+    assert.equal(res.headers["Cache-Control"], "no-store");
+    const cacheControl = res.headers["Vercel-CDN-Cache-Control"];
+    assert.match(cacheControl, /^public, s-maxage=\d+$/);
+    const ttl = Number(cacheControl.match(/s-maxage=(\d+)/)[1]);
+    assert.ok(ttl > 0 && ttl <= 90);
+    assert.equal(JSON.stringify(live).includes("test_secret"), false);
   } finally {
     globalThis.fetch = oldFetch;
     if (oldOpenSkyId === undefined) delete process.env.OPENSKY_CLIENT_ID;
