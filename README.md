@@ -1,6 +1,6 @@
 # AeroFlo
 
-AeroFlo is an aviation education and research portal built around a self-contained U.S. 2D traffic workspace. It includes a generated traffic demo, a separate synthetic scenario lab, aircraft inspection, replay, and an optional Groq-powered assistant. **It does not connect to OpenSky or show observed live flights.**
+AeroFlo is an aviation education and research portal built around a self-contained U.S. 2D traffic workspace. It includes a generated traffic demo, a separate synthetic scenario lab, aircraft inspection, replay, and AVERY — the Aviation Visibility & Early-warning Response system — powered by Groq when configured. **It does not connect to OpenSky or show observed live flights.**
 
 > Public flight data and simulations for education and research. Not for operational use.
 
