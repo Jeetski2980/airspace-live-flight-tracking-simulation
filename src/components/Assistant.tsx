@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowUp, Check, Sparkles } from "lucide-react";
+import { ArrowUp, Check } from "lucide-react";
 import { GROQ_API_KEYS_URL, isLocalDevelopment, VERCEL_ENVIRONMENT_SETTINGS_URL } from "../data/setup";
 import type { AiReply, ScenarioProposal } from "../types";
 
@@ -33,13 +33,13 @@ export function Assistant({ configured, providerState, context, onRunProposal, o
     finally { setBusy(false); }
   }
   return <div className="assistant-panel">
-    <div className="panel-heading"><span className="panel-heading-icon"><Sparkles size={18} /></span><div><span className="eyeline">RESEARCH COMPANION</span><h2>AI Assistant</h2></div></div>
+    <div className="panel-heading"><div><span className="eyeline">AI ASSISTANT</span><h2>AI Assistant</h2></div></div>
     <p className="panel-intro">Ask about the visible map or describe a hypothetical event. Every proposed scenario waits for your review.</p>
     {!configured ? <div className="setup-card" role="status"><strong>Groq setup needed</strong><p>{isLocalDevelopment() ? <>Create a Groq API key, set <code>GROQ_API_KEY</code> in <code>.env.local</code>, then restart the app.</> : <>Add <code>GROQ_API_KEY</code> to the Vercel project environment settings, then redeploy.</>} The key stays server-side. The map and simulations still work.</p><a className="text-button setup-link" href={GROQ_API_KEYS_URL} target="_blank" rel="noreferrer">Get a Groq API key</a>{!isLocalDevelopment() && <a className="text-button setup-link" href={VERCEL_ENVIRONMENT_SETTINGS_URL} target="_blank" rel="noreferrer">Open Vercel environment settings</a>}</div> : <>
       <div className="assistant-status"><span className={`status-dot ${providerState === "working" ? "good" : "amber"}`} />{providerState === "working" ? "Provider checked and working" : providerState === "error" ? "Last request failed" : "Configured · awaiting first check"}</div>
       <div className="suggestions"><button onClick={() => submit("What does the current map show, and how recent is the data?")}>Explain this map</button><button onClick={() => submit("What might happen if JFK has a 30 minute runway closure? Propose a synthetic scenario.")}>Propose a JFK closure</button></div>
       <div className="chat-history" aria-live="polite">
-        {messages.length === 0 ? <div className="chat-empty"><Sparkles size={24}/><strong>Start with the airspace you see.</strong><span>Answers cite the current source, timestamp, and assumptions.</span></div> : messages.map((message, index) => <div className={`chat-message ${message.role}`} key={index}>
+        {messages.length === 0 ? <div className="chat-empty"><strong>Start with the airspace you see.</strong><span>Answers cite the current source, timestamp, and assumptions.</span></div> : messages.map((message, index) => <div className={`chat-message ${message.role}`} key={index}>
           <div className="chat-message-label">{message.role === "user" ? "YOU" : "AI · EDUCATIONAL"}</div>
           <p>{message.text}</p>
           {message.reply ? <>

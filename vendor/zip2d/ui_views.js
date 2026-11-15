@@ -106,7 +106,7 @@ $('#netL').innerHTML = `
     <div>${tag('ESTIMATED')} queues, ETAs, capacity, ripple</div><div>${tag('SIMULATED')} scenario failures &amp; weather</div></div></div>
   <div class="note">Map is a schematic. Sector regions are nearest-centre approximations, not official ARTCC boundaries.</div>`;
 $('#netR').innerHTML = `
-  <div class="sec"><h3>Try a scenario <span class="sp"></span>${tag('SIMULATED')}</h3><div class="tog" id="nrQuick">${scenQuick()}</div><div class="note">Loads the scenario with default parameters into the live sim. Build and compare your own in the What-If Lab.</div></div>
+  <div class="sec"><h3>Try a scenario <span class="sp"></span>${tag('SIMULATED')}</h3><div class="tog" id="nrQuick">${scenQuick()}</div><div class="note">Loads the scenario with default parameters into the simulation timeline. Build and compare your own in the What-If Lab.</div></div>
   <div class="sec" id="nrRip"></div><div class="sec" id="nrAl"></div>
   <div class="sec"><button class="btn" id="nrOpenAl" style="width:100%">Open alerts &amp; consistency checks →</button></div>`;
 $('#sfcL').innerHTML = `<div id="slA"></div><div id="slW"></div><div id="slB"></div><div id="slC"></div>`;

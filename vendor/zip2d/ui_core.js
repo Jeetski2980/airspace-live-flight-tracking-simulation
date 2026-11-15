@@ -81,8 +81,13 @@ CV.addEventListener('pointerup', e => {
   CV.classList.remove('drag'); const was = dragging; dragging = null; if (!was || moved > 5) return;
   if (S.view === 'net') {
     let ph = null, pd = 14; for (const h of LASTHIT) { const d = Math.hypot(h.x - e.clientX, h.y - e.clientY); if (d < pd) { pd = d; ph = h; } }
-    if (ph) { S.pick = S.pick === ph.f ? null : ph.f; return; }
+    if (ph) {
+      S.pick = S.pick === ph.f ? null : ph.f;
+      parent.postMessage({ type: 'airspace-zip-selected', id: S.pick ? `zip2d-${S.pick.id}` : null }, location.origin);
+      return;
+    }
     S.pick = null;
+    parent.postMessage({ type: 'airspace-zip-selected', id: null }, location.origin);
     let best = null, bd = 18; for (const a of AIRPORTS) { const [x, y] = w2s(a.x, a.y); const d = Math.hypot(x - e.clientX, y - e.clientY); if (d < bd) { bd = d; best = a.id; } }
     if (best) { S.sel = best; refreshPanels(true); }
   }

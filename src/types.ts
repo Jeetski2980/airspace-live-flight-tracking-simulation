@@ -1,6 +1,6 @@
-export type Mode = "live" | "simulation";
+export type Mode = "demo" | "simulation";
 export type MapKind = "local" | "us";
-export type PositionKind = "measured" | "estimated" | "stale" | "simulated" | "historical";
+export type PositionKind = "measured" | "estimated" | "stale" | "simulated" | "synthetic_demo";
 export type EventType = "none" | "runway_closure" | "weather_delay" | "traffic_surge" | "generic_disruption";
 
 export interface Location {
@@ -26,29 +26,11 @@ export interface Aircraft {
   lastContact: number | null;
   positionSource: string | null;
   source: string;
-  kind: "live" | "simulated";
+  kind: "demo" | "simulated";
   positionKind?: PositionKind;
 }
 export interface TrailPoint { latitude: number; longitude: number; altitudeM: number | null; time: number }
 export type Trails = Record<string, TrailPoint[]>;
-export interface LiveResponse {
-  state: "connected" | "stale" | "error" | "not_configured" | "loading";
-  configured: boolean;
-  source: string;
-  area: string;
-  bounds: number[];
-  aircraft: Aircraft[];
-  returnedCount: number;
-  positionedCount: number;
-  snapshotTime: number | null;
-  lastSuccess: number | null;
-  stale: boolean;
-  error: string | null;
-  nextPollAt: number | null;
-  remainingCredits: number | null;
-  trails: Trails;
-}
-export interface ReplayFrame { timestamp: number; aircraft: Aircraft[] }
 export interface Scenario {
   id: string;
   name: string;

@@ -49,7 +49,7 @@ function planeImage(color: string) {
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
 const markerImage = (color: string) => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5" fill="${color}" stroke="#071523" stroke-width="2"/><circle cx="12" cy="12" r="1.5" fill="#071523"/></svg>`)}`;
-const images = { live: planeImage("#e8f4f8"), stale: planeImage("#8498a7"), selected: planeImage("#d5ff36"), simulated: planeImage("#b39cff"), unknown: markerImage("#e8f4f8"), unknownSelected: markerImage("#d5ff36") };
+const images = { demo: planeImage("#73c8ff"), live: planeImage("#e8f4f8"), stale: planeImage("#8498a7"), selected: planeImage("#d5ff36"), simulated: planeImage("#b39cff"), unknown: markerImage("#73c8ff"), unknownSelected: markerImage("#d5ff36") };
 
 interface MotionState {
   latitude: number;
@@ -100,7 +100,7 @@ function aim(viewer: Viewer, kind: MapKind, location: Location, instant = false,
 function addOrUpdateBillboard(entity: Entity, aircraft: Aircraft, kind: MapKind, selected: boolean, modelReady: boolean) {
   const image = aircraft.trackDeg === null
     ? selected ? images.unknownSelected : images.unknown
-    : selected ? images.selected : aircraft.kind === "simulated" ? images.simulated : aircraft.positionKind === "estimated" || aircraft.positionKind === "stale" ? images.stale : images.live;
+    : selected ? images.selected : aircraft.kind === "simulated" ? images.simulated : aircraft.positionKind === "estimated" || aircraft.positionKind === "stale" ? images.stale : aircraft.kind === "demo" ? images.demo : images.live;
   const billboard = entity.billboard ?? new BillboardGraphics();
   billboard.image = new ConstantProperty(image);
   billboard.rotation = new ConstantProperty(-CesiumMath.toRadians(aircraft.trackDeg ?? 0));
