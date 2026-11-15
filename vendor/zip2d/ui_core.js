@@ -69,7 +69,9 @@ function resize() {
 }
 function freeArea() { // area not covered by side panels
   if (PREVIEW_MODE) return { cx: W / 2, cy: H / 2, w: W, h: H };
-  const l = (S.view === 'net' || S.view === 'sfc') ? (W > 1100 ? 334 : 286) : 0, r = (S.view === 'net' || S.view === 'sfc') ? (W > 1100 ? 368 : 306) : 0;
+  const sidePanels = S.view === 'net' || S.view === 'sfc';
+  const l = sidePanels ? (W > 1100 ? 334 : Math.min(286, W * 0.62)) : 0;
+  const r = sidePanels && W > 820 ? (W > 1100 ? 368 : 306) : 0;
   return { cx: l + (W - l - r) / 2, cy: 58 + (H - 58 - 96) / 2, w: W - l - r, h: H - 154 };
 }
 function fitUS() { if (typeof ZM !== 'undefined') ZM.s = null; const a = freeArea(); cam.x = 23.2; cam.y = 13.4; cam.s = Math.min(a.w / 47.5, a.h / 27.5); }
@@ -79,25 +81,16 @@ const w2s = (x, y) => { const a = freeArea(); return [(x - cam.x) * cam.s + a.cx
 const s2w = (px, py) => { const a = freeArea(); return [(px - a.cx) / cam.s + cam.x, (py - a.cy) / cam.s + cam.y]; };
 function traceBaseLand() {
   ctx.beginPath();
-  if (PREVIEW_MODE) {
-    for (const state of NYC_BASEMAP_STATES) for (const polygon of state.rings) for (const ring of polygon) {
-      ring.forEach(([lon, lat], i) => { const [x, y] = w2s(lon2x(lon), lat2y(lat)); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
-      ctx.closePath();
-    }
-  } else {
-    US_POLY.forEach(([lon, lat], i) => { const [x, y] = w2s(lon2x(lon), lat2y(lat)); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+  // Draw each contiguous state polygon. Michigan's disconnected peninsulas
+  // and islands are restored as separate polygons by michigan.js.
+  // This shared path drives land fill, borders, weather and sector clipping.
+  for (const [, polygons] of US_STATES) for (const polygon of polygons) for (const ring of polygon) {
+    ring.forEach(([lon, lat], i) => { const [x, y] = w2s(lon2x(lon), lat2y(lat)); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
     ctx.closePath();
   }
 }
 function traceWeatherLand() {
-  ctx.beginPath();
-  // The preview's detailed local basemap only contains Northeast state geometry.
-  // Keep that camera and coastline, but let the nationwide weather raster render
-  // across the full contiguous-U.S. data footprint when users pan or zoom out.
-  if (PREVIEW_MODE) {
-    US_POLY.forEach(([lon, lat], i) => { const [x, y] = w2s(lon2x(lon), lat2y(lat)); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
-    ctx.closePath();
-  } else traceBaseLand();
+  traceBaseLand();
 }
 let dragging = null, moved = 0;
 CV.addEventListener('pointerdown', e => { ZM.s = null; dragging = { x: e.clientX, y: e.clientY, cx: cam.x, cy: cam.y }; moved = 0; CV.setPointerCapture(e.pointerId); CV.classList.add('drag'); });

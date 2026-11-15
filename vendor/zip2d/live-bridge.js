@@ -2,8 +2,22 @@
    the original ZIP simulation engine, preserving its full synthetic network. */
 addEventListener('message', event => {
   if (event.origin !== location.origin || event.source !== parent) return;
+  if (event.data?.type === 'airspace-zip-view' && ['net', 'sfc', 'lab', 'deg', 'alr'].includes(event.data.view)) {
+    setView(event.data.view);
+    return;
+  }
   if (event.data?.type === 'airspace-zip-preview-zoom') {
     if (PREVIEW_MODE && Number.isFinite(event.data.factor) && event.data.factor >= 0.5 && event.data.factor <= 2) zoomBy(event.data.factor);
+    return;
+  }
+  if (event.data?.type === 'airspace-zip-select') {
+    const hit = LASTHIT.find(item => `zip2d-${item.f.id}` === event.data.id);
+    if (hit) { setView('net'); S.pick = hit.f; refreshPanels(true); }
+    return;
+  }
+  if (event.data?.type === 'airspace-zip-focus-aircraft') {
+    const hit = LASTHIT.find(item => `zip2d-${item.f.id}` === event.data.id);
+    if (hit) { setView('net'); S.pick = hit.f; cam.x = hit.p[0]; cam.y = hit.p[1]; cam.s = Math.max(cam.s, 45); refreshPanels(true); }
     return;
   }
   if (event.data?.type !== 'airspace-zip-focus') return;

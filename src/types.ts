@@ -1,6 +1,4 @@
 export type Mode = "demo" | "simulation";
-export type MapKind = "local" | "us";
-export type PositionKind = "measured" | "estimated" | "stale" | "simulated" | "synthetic_demo";
 export type EventType = "none" | "runway_closure" | "weather_delay" | "traffic_surge" | "generic_disruption";
 
 export interface Location {
@@ -9,39 +7,6 @@ export interface Location {
   city: string;
   lat: number;
   lon: number;
-}
-export interface Aircraft {
-  id: string;
-  callsign: string | null;
-  originCountry: string | null;
-  latitude: number | null;
-  longitude: number | null;
-  baroAltitudeM: number | null;
-  geoAltitudeM: number | null;
-  groundSpeedMs: number | null;
-  trackDeg: number | null;
-  verticalRateMs: number | null;
-  onGround: boolean | null;
-  positionTime: number | null;
-  lastContact: number | null;
-  positionSource: string | null;
-  source: string;
-  kind: "demo" | "simulated";
-  positionKind?: PositionKind;
-}
-export interface TrailPoint { latitude: number; longitude: number; altitudeM: number | null; time: number }
-export type Trails = Record<string, TrailPoint[]>;
-export interface Scenario {
-  id: string;
-  name: string;
-  locationId: string;
-  eventType: EventType;
-  durationMinutes: number;
-  syntheticAircraftCount: number;
-  description: string;
-  seed: number;
-  pattern: "local" | "cross_country";
-  assumptions: string[];
 }
 export interface ScenarioProposal {
   locationId: string;
@@ -62,11 +27,4 @@ export interface AiReply {
   source: string;
   sourceTimestamp: number | null;
   label: string;
-}
-export interface AssetStatus {
-  imagery: "loading" | "ion" | "osm" | "fallback" | "error";
-  terrain: "loading" | "ion" | "ellipsoid" | "error";
-  buildings: "loading" | "ion" | "unavailable" | "not_requested";
-  model: "loading" | "ready" | "fallback";
-  message: string | null;
 }
