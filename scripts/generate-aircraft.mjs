@@ -92,37 +92,59 @@ function wing(side, { span, rootLeading, rootTrailing, tipLeading, tipTrailing, 
 }
 
 // 39 m body length, 36 m wingspan. Nose is +Z; wing tips extend to +/-18 m.
-fuselage([
-  [-19.5, 0.06, 0.07, 1.72], [-18.6, 0.38, 0.42, 1.72], [-16.5, 0.82, 0.78, 1.72],
-  [-13, 1.12, 1.02, 1.72], [-8, 1.42, 1.22, 1.72], [-2, 1.52, 1.3, 1.72],
-  [5, 1.48, 1.27, 1.72], [10, 1.25, 1.07, 1.72], [14, 0.91, 0.78, 1.72],
-  [17, 0.53, 0.48, 1.72], [19.5, 0.04, 0.04, 1.72],
-], 0, 48);
+const bodyProfile = [
+  [-19.5, 0.06, 0.07, 1.72], [-18.6, 0.42, 0.46, 1.72], [-16.5, 0.9, 0.82, 1.72],
+  [-13, 1.25, 1.08, 1.72], [-8, 1.6, 1.38, 1.72], [-2, 1.78, 1.5, 1.72],
+  [5, 1.78, 1.48, 1.72], [10, 1.55, 1.28, 1.72], [14, 1.15, 0.94, 1.72],
+  [17, 0.65, 0.57, 1.72], [19.5, 0.04, 0.04, 1.72],
+];
+fuselage(bodyProfile, 0, 48);
+
+function bodyPoint(z, side, upperRatio, lift = 0.018) {
+  let index = bodyProfile.findIndex((station, i) => i < bodyProfile.length - 1 && z >= station[0] && z <= bodyProfile[i + 1][0]);
+  if (index < 0) index = z < bodyProfile[0][0] ? 0 : bodyProfile.length - 2;
+  const a = bodyProfile[index], b = bodyProfile[index + 1];
+  const t = Math.max(0, Math.min(1, (z - a[0]) / (b[0] - a[0])));
+  const rx = a[1] + (b[1] - a[1]) * t;
+  const ry = a[2] + (b[2] - a[2]) * t;
+  const cy = a[3] + (b[3] - a[3]) * t;
+  const vertical = Math.max(-0.98, Math.min(0.98, upperRatio));
+  const x = rx * Math.sqrt(1 - vertical * vertical);
+  return [side * x, cy + ry * vertical + lift, z];
+}
 
 for (const side of [-1, 1]) {
-  wing(side, { span: 18, rootLeading: 6.2, rootTrailing: -7, tipLeading: 0.2, tipTrailing: -3.7, y: 1.58, material: 1 });
+  wing(side, { span: 18, rootLeading: 4.7, rootTrailing: -2.7, tipLeading: -2.5, tipTrailing: -4.5, y: 1.58, material: 1 });
   // Horizontal stabilizer: shorter span, stronger sweep, near the tail.
   wing(side, { span: 7.4, rootLeading: -13.3, rootTrailing: -18.5, tipLeading: -16.4, tipTrailing: -18.9, y: 2.0, material: 1 });
 
   // Slim swept winglet.
   const x = side * 17.65;
-  quad([x, 1.58, -3.7], [side * 18, 1.58, -3.55], [side * 17.82, 3.45, -1.7], [x, 3.05, -2.15], 1);
-  quad([side * 18, 1.58, -3.55], [x, 1.58, -3.7], [x, 3.05, -2.15], [side * 17.82, 3.45, -1.7], 1);
-  quad([side * 17.84, 1.55, -1.5], [side * 18, 1.55, -1.5], [side * 18, 1.59, -0.5], [side * 17.84, 1.59, -0.5], 3);
+  quad([x, 1.58, -4.5], [side * 18, 1.58, -4.35], [side * 17.82, 3.45, -2.55], [x, 3.05, -2.9], 1);
+  quad([side * 18, 1.58, -4.35], [x, 1.58, -4.5], [x, 3.05, -2.9], [side * 17.82, 3.45, -2.55], 1);
+  quad([side * 17.84, 1.55, -4.5], [side * 18, 1.55, -4.5], [side * 18, 1.59, -2.5], [side * 17.84, 1.59, -2.5], 3);
 
   // Under-wing pylons and smooth turbofan nacelles; the inlets face the nose (+Z).
   prism([[side * 5.0, 1.35], [side * 7.8, 1.35], [side * 7.2, -1.5], [side * 5.4, -1.5]], 0.9, 1.52, 4);
   fuselage([
-    [-4.2, 0.52, 0.52, 0.61], [-3.8, 0.66, 0.64, 0.61], [-3.2, 0.72, 0.68, 0.61],
-    [-1.8, 0.76, 0.72, 0.61], [0.8, 0.76, 0.72, 0.61], [2.4, 0.69, 0.66, 0.61],
-    [3.0, 0.54, 0.52, 0.61], [3.1, 0.48, 0.46, 0.61],
+    [-4.2, 0.62, 0.6, 0.61], [-3.8, 0.78, 0.73, 0.61], [-3.2, 0.86, 0.8, 0.61],
+    [-1.8, 0.91, 0.86, 0.61], [0.8, 0.91, 0.86, 0.61], [2.4, 0.82, 0.77, 0.61],
+    [3.0, 0.64, 0.61, 0.61], [3.1, 0.56, 0.53, 0.61],
   ], 4, 32, side * 6.6);
   // Dark recessed fan opening, surrounded by a metallic inlet lip.
-  const inletX = side * 6.6, inletY = 0.61, inletR = 0.49, inletZ = 3.06;
+  const inletX = side * 6.6, inletY = 0.61, inletR = 0.56, inletZ = 3.06;
   for (let i = 0; i < 32; i++) {
     const a = 2 * Math.PI * i / 32, b = 2 * Math.PI * (i + 1) / 32;
     triangle([inletX, inletY, inletZ], [inletX + inletR * Math.cos(a), inletY + inletR * Math.sin(a), inletZ], [inletX + inletR * Math.cos(b), inletY + inletR * Math.sin(b), inletZ], 2, [[0, 0, 1], [0, 0, 1], [0, 0, 1]]);
-    quad([inletX + 0.49 * Math.cos(a), inletY + 0.49 * Math.sin(a), inletZ], [inletX + 0.55 * Math.cos(a), inletY + 0.55 * Math.sin(a), inletZ], [inletX + 0.55 * Math.cos(b), inletY + 0.55 * Math.sin(b), inletZ], [inletX + 0.49 * Math.cos(b), inletY + 0.49 * Math.sin(b), inletZ], 4);
+    quad([inletX + 0.56 * Math.cos(a), inletY + 0.56 * Math.sin(a), inletZ], [inletX + 0.63 * Math.cos(a), inletY + 0.63 * Math.sin(a), inletZ], [inletX + 0.63 * Math.cos(b), inletY + 0.63 * Math.sin(b), inletZ], [inletX + 0.56 * Math.cos(b), inletY + 0.56 * Math.sin(b), inletZ], 4);
+  }
+  // Exhaust opening and fan hub give the engine a readable 3D end profile.
+  const exhaustZ = -4.18, exhaustR = 0.57;
+  for (let i = 0; i < 32; i++) {
+    const a = 2 * Math.PI * i / 32, b = 2 * Math.PI * (i + 1) / 32;
+    triangle([inletX, inletY, exhaustZ], [inletX + exhaustR * Math.cos(a), inletY + exhaustR * Math.sin(a), exhaustZ], [inletX + exhaustR * Math.cos(b), inletY + exhaustR * Math.sin(b), exhaustZ], 2, [[0, 0, -1], [0, 0, -1], [0, 0, -1]]);
+    const hubR = 0.13;
+    triangle([inletX, inletY, exhaustZ - 0.01], [inletX + hubR * Math.cos(a), inletY + hubR * Math.sin(a), exhaustZ - 0.01], [inletX + hubR * Math.cos(b), inletY + hubR * Math.sin(b), exhaustZ - 0.01], 4, [[0, 0, -1], [0, 0, -1], [0, 0, -1]]);
   }
 }
 
@@ -140,21 +162,21 @@ for (let i = 0; i < finOutline.length; i++) {
   quad([-finSide, y0, z0], [finSide, y0, z0], [finSide, y1, z1], [-finSide, y1, z1], 1);
 }
 
-// Dark cockpit glazing on the sloped front crown and small, evenly spaced cabin windows.
-quad([-0.72, 2.74, 15.0], [-0.12, 3.02, 17.1], [-0.12, 3.08, 17.6], [-0.78, 2.87, 16.4], 2);
-quad([0.12, 3.02, 17.1], [0.72, 2.74, 15.0], [0.78, 2.87, 16.4], [0.12, 3.08, 17.6], 2);
+// Cockpit glazing follows the curved upper fuselage instead of floating above it.
+for (const side of [-1, 1]) {
+  quad(bodyPoint(13.6, side, 0.66), bodyPoint(13.6, side, 0.91), bodyPoint(16.5, side, 0.77), bodyPoint(16.5, side, 0.42), 2);
+}
+// Evenly spaced cabin windows sit tangent to the rounded upper sides of the fuselage.
 for (const side of [-1, 1]) {
   for (let i = 0; i < 11; i++) {
     const z = -7.2 + i * 1.45;
-    const x = side * (1.35 - Math.max(0, z - 4) * 0.035);
-    const y = 2.14;
-    quad([x, y, z], [x, y, z + 0.74], [x, y + 0.3, z + 0.74], [x, y + 0.3, z], 2);
+    quad(bodyPoint(z, side, 0.22), bodyPoint(z + 0.74, side, 0.22), bodyPoint(z + 0.74, side, 0.42), bodyPoint(z, side, 0.42), 2);
   }
 }
 
 // Small neutral wingtip accents reinforce the aircraft's direction at close zoom.
-prism([[16.9, -0.35], [17.7, -0.42], [17.7, -3.85], [16.9, -3.68]], 1.56, 1.66, 3);
-prism([[-17.7, -0.42], [-16.9, -0.35], [-16.9, -3.68], [-17.7, -3.85]], 1.56, 1.66, 3);
+prism([[16.9, -2.55], [17.7, -2.62], [17.7, -4.52], [16.9, -4.5]], 1.56, 1.66, 3);
+prism([[-17.7, -2.62], [-16.9, -2.55], [-16.9, -4.5], [-17.7, -4.52]], 1.56, 1.66, 3);
 
 const chunks = [], bufferViews = [], accessors = [], primitives = [];
 let offset = 0;
