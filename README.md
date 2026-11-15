@@ -16,13 +16,15 @@ npm run dev
 
 Open [http://127.0.0.1:5173/](http://127.0.0.1:5173/). The portal is at `/portal`; the API runs on `127.0.0.1:8787` and is proxied by Vite. Edit `.env.local` on your own machine, then restart `npm run dev` after changing any setting. The example file contains placeholders, so a new install starts in clear setup states rather than trying to use them as credentials. The landing preview and Simulation Mode work before any account is configured.
 
+To enable AI locally, create a Gemini API key in [Google AI Studio](https://aistudio.google.com/app/apikey), replace the `GEMINI_API_KEY` placeholder in `.env.local`, and restart the server. The key is sent only from the backend to Google; do not prefix it with `VITE_` or paste it into the website or chat.
+
 | Setting | Where it is read | Purpose |
 | --- | --- | --- |
 | `VITE_CESIUM_ION_TOKEN` | Browser, through `import.meta.env.VITE_CESIUM_ION_TOKEN` | Cesium aerial imagery, terrain, buildings, and general place search. This is a **public-client token**, not a private server secret. Restrict its `assets:read` scope, allowed assets, and allowed URLs in Cesium ion. |
 | `OPENSKY_CLIENT_ID` | API server only | OpenSky OAuth2 client credentials. |
 | `OPENSKY_CLIENT_SECRET` | API server only | OpenSky OAuth2 client credentials. |
-| `OPENAI_API_KEY` | API server only | Optional AI Assistant. |
-| `OPENAI_MODEL` | API server only | Optional model override; defaults to `gpt-5-mini`. |
+| `GEMINI_API_KEY` | API server only | Optional Google AI Studio Gemini API key for the AI Assistant. |
+| `GEMINI_MODEL` | API server only | Optional Gemini model override; defaults to `gemini-3.8-flash`. |
 
 Do not use a `VITE_` prefix for OpenSky or AI credentials. `.env`, `.env.local`, and other local environment files are ignored by Git; `.env.example` is safe to share. The browser token is embedded in the client build by Vite, so do not use a broad or privileged ion token.
 
@@ -33,7 +35,7 @@ Do not use a `VITE_` prefix for OpenSky or AI credentials. `.env`, `.env.local`,
 - **Flights:** choose an aircraft in the map or list. The same selected ID is used in both map views. Unknown airline, type, origin, and destination stay **Unavailable**.
 - **Replay:** captures successful OpenSky snapshots in the browser session while Live Data is active, with the API process cache as an additional source. It requires at least two captured updates for the area. The current browser keeps up to 42 local-area frames or 12 U.S.-wide frames for one hour, so replay works across serverless function instances without storing traffic in a shared service. Recent paths are built from those frames; replay does not call a historical OpenSky endpoint.
 - **Simulation:** choose a preset, create a custom location/event/duration/count, or review an AI proposal. Start, pause, resume, reset, scrub time, and choose a speed from 0.5× to 8×. Aircraft position samples update every 10 seconds and the map animates between them from synthetic speed and track. Local sample speeds are 75–120 m/s; cross-country samples use 200–230 m/s. The comparison panel shows two synthetic scenarios and their assumptions. Its aggregate delay number is an abstract progress deficit, not a real airport delay forecast.
-- **AI Assistant:** when configured, asks the OpenAI Responses API about the visible map and can propose a synthetic scenario with a validated location, event type, duration, and traffic count. The proposal displays assumptions and waits for **Confirm & load simulation**. It cannot change the live feed, issue aircraft instructions, or start the scenario itself. When the key is absent, the panel says so.
+- **AI Assistant:** when configured, asks Google's Gemini API about the visible map and can propose a synthetic scenario with a validated location, event type, duration, and traffic count. The proposal displays assumptions and waits for **Confirm & load simulation**. It cannot change the live feed, issue aircraft instructions, or start the scenario itself. When the key is absent, the panel links to Google AI Studio and says where to configure it.
 - **Data Status:** reports the local 2D base map or 3D map layers and model, OpenSky connection, last success, snapshot age, polling, and AI provider check state. “Configured · unverified” means no successful AI request has been observed yet.
 
 Live interpolation uses a reported position, ground speed, and track only when all are present, for up to 180 seconds after the position timestamp. Interpolated points are labeled **Estimated between updates** and the map moves them smoothly between 10-second display updates. Older reports are labeled **stale** and are not projected. This is client-side animation, not faster polling: OpenSky requests remain no more frequent than 90 seconds for a local area and 180 seconds for the U.S. If the API fails after a successful response, the browser retains that response and labels it **stale**. The app never substitutes simulation aircraft in Live Data Mode.
@@ -50,7 +52,7 @@ Cesium ion is optional for using the portal, but **aerial imagery, World Terrain
 
 The airplane mesh is an [original, locally generated GLB](scripts/generate-aircraft.mjs) with a 39 m length and 36 m wingspan. Its smooth lofted fuselage, cambered swept wings, tail surfaces, engines, cockpit glazing, and cabin windows are drawn at real-world scale. The mesh uses glTF Y-up and +Z forward so Cesium can align its nose to the reported track. It is a neutral generic twin-jet model, not a claim about an aircraft's actual type or operator. Source and license are in [public/models/LICENSE.txt](public/models/LICENSE.txt). Cesium reuses the local GLB URL for aircraft entities. If it fails to load, aircraft remain selectable as labeled map symbols.
 
-The AI service is optional and uses the [OpenAI Responses API structured output](https://platform.openai.com/docs/guides/structured-outputs). Its provider adapter is isolated in `server/providers/openai.mjs`; other providers can implement the same `configured` and `structuredReply` interface without changing scenario validation. It is server-side only, accepts a bounded map summary, validates scenario proposals, and returns explicit evidence and assumptions. AI text is uncertain and educational. No key was supplied with this project, so successful provider calls have to be checked after local configuration.
+The AI service is optional and uses Google's [Gemini API](https://ai.google.dev/api/generate-content) with structured JSON output. Create a key in [Google AI Studio](https://aistudio.google.com/app/apikey), then add `GEMINI_API_KEY` to `.env.local` for local use or to the Vercel project environment for deployment. Its adapter in `server/providers/gemini.mjs` calls the REST API from the server only. It accepts a bounded map summary, validates scenario proposals, and returns explicit evidence and assumptions. AI text is uncertain and educational. No key was supplied with this project, so a successful provider request must be checked after local configuration.
 
 ## Checks and troubleshooting
 
@@ -76,6 +78,7 @@ Configure these variables in Vercel Project Settings → Environment Variables, 
 
 - `VITE_CESIUM_ION_TOKEN` for browser imagery and terrain (a public-client token; restrict allowed assets, scope, and URLs).
 - `OPENSKY_CLIENT_ID` and `OPENSKY_CLIENT_SECRET` for live data. Keep both server-side and do not use a `VITE_` prefix.
-- `OPENAI_API_KEY` for the optional AI assistant.
+- `GEMINI_API_KEY` for the optional Google AI Studio assistant.
+- `GEMINI_MODEL` if you want to override the default Gemini Flash model.
 
-For the Cesium variable, choose **Config** in Vercel because the `VITE_` value is public in the browser build. Keep OpenSky and OpenAI variables as **Secret** and server-side. After changing production variables, redeploy to apply them. The portal and simulations work without provider credentials. Live OpenSky traffic and AI stay unavailable until their server variables are configured. Never commit `.env.local` or place server credentials in browser variables.
+For the Cesium variable, choose **Config** in Vercel because the `VITE_` value is public in the browser build. Keep OpenSky and Gemini variables as **Secret** and server-side. After changing production variables, redeploy to apply them. The portal and simulations work without provider credentials. Live OpenSky traffic and AI stay unavailable until their server variables are configured. Never commit `.env.local` or place server credentials in browser variables.
