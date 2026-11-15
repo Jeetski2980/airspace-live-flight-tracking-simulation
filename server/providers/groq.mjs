@@ -1,12 +1,23 @@
 // Groq credentials are server-only. Never rename this to a VITE_ variable.
+function getApiKey() {
+  let key = process.env.GROQ_API_KEY?.trim() ?? "";
+  for (let pass = 0; pass < 2; pass += 1) {
+    key = key.trim().replace(/^GROQ_API_KEY\s*=\s*/i, "").trim();
+    if ((key.startsWith('"') && key.endsWith('"')) || (key.startsWith("'") && key.endsWith("'"))) {
+      key = key.slice(1, -1).trim();
+    }
+  }
+  return key;
+}
+
 export const groqProvider = {
   name: "Groq API",
   configured() {
-    const key = process.env.GROQ_API_KEY?.trim();
+    const key = getApiKey();
     return Boolean(key && !key.startsWith("your_"));
   },
   async structuredReply({ instructions, input, schema }) {
-    const apiKey = process.env.GROQ_API_KEY.trim();
+    const apiKey = getApiKey();
     const model = process.env.GROQ_MODEL?.trim() || "openai/gpt-oss-20b";
     const request = async (response_format, systemInstructions = instructions) => {
       const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -69,7 +80,7 @@ export const groqProvider = {
 function createProviderError(status, providerMessage, schemaFailure) {
   let message;
   if (status === 401 || status === 403) {
-    message = "Groq rejected the API key. Check GROQ_API_KEY and that the key is active.";
+    message = "Groq rejected the Production API key. Replace GROQ_API_KEY with an active raw key without quotes or a GROQ_API_KEY= prefix, then redeploy.";
   } else if (status === 429) {
     message = "Groq is rate limited. Try again later or check the limits for this API key.";
   } else if (schemaFailure) {
