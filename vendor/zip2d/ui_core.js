@@ -11,7 +11,7 @@ const RUN_COLORS = ['#8a96a8', '#5aa9ff', '#ff8a3d', '#3ddc97', '#b18cff', '#f5b
 const S = {
   view: 'net', sim: null, cfg: newCfg(), applied: newCfg(), speed: 10 / 60, playing: true, acc: 0, sel: 'JFK',
   wxAmt: 0.6, layers: { jfk: 1, sectors: 1, wx: 1, cloud: 1, wind: 1, storm: 1, xw: 1, routes: 0, aircraft: 1, rings: 1, labels: 1 },
-  runs: [], runSeq: 0, uid: 1, cmp: 'q',
+  runs: [], runSeq: 0, uid: 1, cmp: 'q', aiProposalRequests: new Set(),
   alerts: [], alertByKey: {}, alertSeq: 1, alertVer: 0, alertSel: null, incIdx: 0, lastIncAt: {},
   tasks: [], taskKeys: {}, taskVer: 0, restored: {}, decisions: [], selTaxi: null,
 };
