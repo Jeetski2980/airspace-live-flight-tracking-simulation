@@ -133,3 +133,25 @@ test("Groq schema errors are sanitized if JSON fallback also fails", async () =>
     if (oldGroqKey === undefined) delete process.env.GROQ_API_KEY; else process.env.GROQ_API_KEY = oldGroqKey;
   }
 });
+
+test("Groq accepts an accidentally quoted environment assignment", async () => {
+  const oldGroqKey = process.env.GROQ_API_KEY;
+  const oldGroqModel = process.env.GROQ_MODEL;
+  const oldFetch = globalThis.fetch;
+  try {
+    process.env.GROQ_API_KEY = '"GROQ_API_KEY=test_groq_key"';
+    process.env.GROQ_MODEL = "openai/gpt-oss-20b";
+    globalThis.fetch = async (_url, options) => {
+      assert.equal(options.headers.Authorization, "Bearer test_groq_key");
+      const output = { kind: "answer", answer: "The visible network uses synthetic data.", evidence: [], assumptions: [], proposal: null };
+      return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(output) } }] }), { status: 200 });
+    };
+    const response = await askAssistant({ message: "Explain the map.", context: { view: "us", aircraft: [] } });
+    assert.equal(response.status, 200);
+    assert.equal(response.body.kind, "answer");
+  } finally {
+    globalThis.fetch = oldFetch;
+    if (oldGroqKey === undefined) delete process.env.GROQ_API_KEY; else process.env.GROQ_API_KEY = oldGroqKey;
+    if (oldGroqModel === undefined) delete process.env.GROQ_MODEL; else process.env.GROQ_MODEL = oldGroqModel;
+  }
+});
