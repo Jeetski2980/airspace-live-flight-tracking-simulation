@@ -16,3 +16,5 @@
 .focus-aircraft{width:100%;justify-content:center;margin:0 0 10px;font-size:11px}
 
 .setup-link{display:inline-flex;align-items:center;margin-top:10px;text-decoration:none}.setup-link:hover{text-decoration:underline}
+
+.zip2d-frame{display:block;flex:1;width:100%;min-height:0;border:0;background:#05070b}
