@@ -131,3 +131,5 @@
   .panel-content,.assistant-panel{padding:18px 15px 22px}
   .inspector-top{padding:0 15px}
 }
+
+.preview-map-2d iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:#05070b}

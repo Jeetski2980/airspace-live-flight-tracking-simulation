@@ -4,6 +4,8 @@
    ============================================================ */
 const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const HORIZON = 360, SEED = 11;
+const PREVIEW_MODE = new URLSearchParams(location.search).get('preview') === '1';
+if (PREVIEW_MODE) document.body.classList.add('preview-mode');
 const RUN_COLORS = ['#8a96a8', '#5aa9ff', '#ff8a3d', '#3ddc97', '#b18cff', '#f5b942', '#ff4d5e', '#2dd4bf', '#e879f9', '#a3e635'];
 
 const S = {
@@ -66,6 +68,7 @@ function resize() {
   const tl = $('#tlc'); const r = tl.parentElement.getBoundingClientRect(); tl.width = Math.max(10, r.width) * DPR; tl.height = Math.max(10, r.height) * DPR;
 }
 function freeArea() { // area not covered by side panels
+  if (PREVIEW_MODE) return { cx: W / 2, cy: H / 2, w: W, h: H };
   const l = (S.view === 'net' || S.view === 'sfc') ? (W > 1100 ? 334 : 286) : 0, r = (S.view === 'net' || S.view === 'sfc') ? (W > 1100 ? 368 : 306) : 0;
   return { cx: l + (W - l - r) / 2, cy: 58 + (H - 58 - 96) / 2, w: W - l - r, h: H - 154 };
 }
@@ -74,6 +77,28 @@ function focusNY() { if (typeof ZM !== 'undefined') ZM.s = null; const a = freeA
 function focusAp(id) { if (typeof ZM !== 'undefined') ZM.s = null; const a = freeArea(); cam.x = AP[id].x; cam.y = AP[id].y; cam.s = Math.max(cam.s, 40); }
 const w2s = (x, y) => { const a = freeArea(); return [(x - cam.x) * cam.s + a.cx, (y - cam.y) * cam.s + a.cy]; };
 const s2w = (px, py) => { const a = freeArea(); return [(px - a.cx) / cam.s + cam.x, (py - a.cy) / cam.s + cam.y]; };
+function traceBaseLand() {
+  ctx.beginPath();
+  if (PREVIEW_MODE) {
+    for (const state of NYC_BASEMAP_STATES) for (const polygon of state.rings) for (const ring of polygon) {
+      ring.forEach(([lon, lat], i) => { const [x, y] = w2s(lon2x(lon), lat2y(lat)); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+      ctx.closePath();
+    }
+  } else {
+    US_POLY.forEach(([lon, lat], i) => { const [x, y] = w2s(lon2x(lon), lat2y(lat)); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+    ctx.closePath();
+  }
+}
+function traceWeatherLand() {
+  ctx.beginPath();
+  // The preview's detailed local basemap only contains Northeast state geometry.
+  // Keep that camera and coastline, but let the nationwide weather raster render
+  // across the full contiguous-U.S. data footprint when users pan or zoom out.
+  if (PREVIEW_MODE) {
+    US_POLY.forEach(([lon, lat], i) => { const [x, y] = w2s(lon2x(lon), lat2y(lat)); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+    ctx.closePath();
+  } else traceBaseLand();
+}
 let dragging = null, moved = 0;
 CV.addEventListener('pointerdown', e => { ZM.s = null; dragging = { x: e.clientX, y: e.clientY, cx: cam.x, cy: cam.y }; moved = 0; CV.setPointerCapture(e.pointerId); CV.classList.add('drag'); });
 CV.addEventListener('pointermove', e => { if (!dragging || S.view === 'sfc') return; const dx = e.clientX - dragging.x, dy = e.clientY - dragging.y; moved = Math.max(moved, Math.abs(dx) + Math.abs(dy)); cam.x = dragging.cx - dx / cam.s; cam.y = dragging.cy - dy / cam.s; });
@@ -136,23 +161,24 @@ const SEC = { cv: document.createElement('canvas'), key: '' }; SEC.cv.width = 11
 function drawNet() {
   const sim = S.sim, tt = sim.t + Math.min(0.999, S.acc), fx = sim.fx;
   const L = S.layers, P = sectorPressure(sim);
-  // base: US outline
-  ctx.beginPath(); US_POLY.forEach(([lo, la], i) => { const [x, y] = w2s(lon2x(lo), lat2y(la)); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }); ctx.closePath();
-  ctx.fillStyle = '#090d14'; ctx.fill();
+  // Base land: detailed local state/coastline outlines in the landing preview,
+  // original schematic U.S. outline in the full network view.
+  traceBaseLand();
+  ctx.fillStyle = PREVIEW_MODE ? '#101d2a' : '#090d14'; ctx.fill('evenodd');
   if (L.sectors) {
     const key = Object.values(P).map(v => v.toFixed(2)).join();
     if (SEC.key !== key) { SEC.key = key; SEC.x.clearRect(0, 0, 118, 52); for (const c of SECTOR_CELLS.cells) { SEC.x.fillStyle = sectorColor(P[c.c]); SEC.x.fillRect(c.gx, 51 - c.gy, 1, 1); } }
-    ctx.save(); ctx.beginPath(); US_POLY.forEach(([lo, la], i) => { const [x, y] = w2s(lon2x(lo), lat2y(la)); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }); ctx.closePath(); ctx.clip();
+    ctx.save(); traceBaseLand(); ctx.clip('evenodd');
     const [x0, y0] = w2s(0, 0), [x1, y1] = w2s(lon2x(-66), lat2y(24)); ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; ctx.drawImage(SEC.cv, x0, y0, x1 - x0, y1 - y0); ctx.restore();
     ctx.strokeStyle = `rgba(138,150,168,${cam.s > 36 ? 0.07 : 0.16})`; ctx.lineWidth = 0.7; ctx.beginPath();
     for (const e of SECTOR_CELLS.edges) { const [ax, ay] = w2s(e[0], e[1]), [bx, by] = w2s(e[2], e[3]); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); }
     ctx.stroke();
   }
-  if (L.wx || L.cloud) { ctx.save(); ctx.beginPath(); US_POLY.forEach(([lo, la], i) => { const [x, y] = w2s(lon2x(lo), lat2y(la)); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }); ctx.closePath(); ctx.clip(); const [x0, y0] = w2s(0, 0), [x1, y1] = w2s(lon2x(-66), lat2y(24)); ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; ctx.globalAlpha = S.wxAmt; if (L.cloud) ctx.drawImage(wxCloudImage(tt), x0, y0, x1 - x0, y1 - y0); if (L.wx) ctx.drawImage(wxNetImage(tt), x0, y0, x1 - x0, y1 - y0); ctx.restore(); }
+  if (L.wx || L.cloud) { ctx.save(); traceWeatherLand(); ctx.clip('evenodd'); const [x0, y0] = w2s(0, 0), [x1, y1] = w2s(lon2x(-66), lat2y(24)); ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; ctx.globalAlpha = S.wxAmt; if (L.cloud) ctx.drawImage(wxCloudImage(tt), x0, y0, x1 - x0, y1 - y0); if (L.wx) ctx.drawImage(wxNetImage(tt), x0, y0, x1 - x0, y1 - y0); ctx.restore(); }
   if (L.wind) wxDrawWind(tt);
   if (L.wx) wxDrawFront(tt);
-  ctx.beginPath(); US_POLY.forEach(([lo, la], i) => { const [x, y] = w2s(lon2x(lo), lat2y(la)); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }); ctx.closePath();
-  ctx.strokeStyle = '#2a3446'; ctx.lineWidth = 1.2; ctx.stroke();
+  traceBaseLand();
+  ctx.strokeStyle = PREVIEW_MODE ? '#435d73' : '#2a3446'; ctx.lineWidth = PREVIEW_MODE ? 1.35 : 1.2; ctx.stroke();
   if (L.sectors && cam.s > 14) { ctx.fillStyle = 'rgba(138,150,168,.5)'; ctx.font = '500 10px Geist Mono,monospace'; ctx.textAlign = 'center'; for (const c of CENTERS) { const [x, y] = w2s(c.x, c.y); ctx.fillText(c.id, x, y); } }
   // weather disks
   for (const id in fx.wx) { const w = fx.wx[id], a = AP[id], [x, y] = w2s(a.x, a.y), r = (0.5 + 1.1 * w.sev) * cam.s; const g = ctx.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, `rgba(177,140,255,${0.32 * w.f})`); g.addColorStop(1, 'rgba(177,140,255,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); }
@@ -198,7 +224,11 @@ function drawNet() {
     if (L.xw) wxStation(a, x, y, r, tt);
     if (a.id === 'JFK') { ctx.strokeStyle = '#5aa9ff'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.arc(x, y, r + 4, 0, 7); ctx.stroke(); }
     if (a.id === S.sel) { ctx.strokeStyle = '#eef2f7'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(x, y, r + 8, 0, 7); ctx.stroke(); }
-    if (L.labels && (NYAP.has(a.id) || a.id === S.sel || cam.s > 12 || a.cap >= 70)) { ctx.fillStyle = NYAP.has(a.id) ? '#eef2f7' : 'rgba(205,214,228,.7)'; ctx.font = `${NYAP.has(a.id) ? 600 : 500} ${a.id === 'JFK' ? 12 : NYAP.has(a.id) ? 11.5 : 10}px Geist,sans-serif`; ctx.textAlign = 'left'; ctx.fillText(a.id, x + r + 6, y + 3.5); }
+    if (PREVIEW_MODE && NYAP.has(a.id)) {
+      const labels = { EWR: [-8, -9, 'right'], LGA: [9, -8, 'left'], JFK: [10, 13, 'left'] };
+      const [dx, dy, align] = labels[a.id];
+      ctx.fillStyle = '#eef2f7'; ctx.font = '600 11px Geist,sans-serif'; ctx.textAlign = align; ctx.fillText(a.id, x + dx, y + dy);
+    } else if (L.labels && (NYAP.has(a.id) || a.id === S.sel || cam.s > 12 || a.cap >= 70)) { ctx.fillStyle = NYAP.has(a.id) ? '#eef2f7' : 'rgba(205,214,228,.7)'; ctx.font = `${NYAP.has(a.id) ? 600 : 500} ${a.id === 'JFK' ? 12 : NYAP.has(a.id) ? 11.5 : 10}px Geist,sans-serif`; ctx.textAlign = 'left'; ctx.fillText(a.id, x + r + 6, y + 3.5); }
   }
   drawHover(flows, HIT, tt);
 }
@@ -301,7 +331,7 @@ function drawSurface() {
 }
 
 function draw() {
-  ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.fillStyle = '#05070b'; ctx.fillRect(0, 0, W, H);
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.fillStyle = PREVIEW_MODE ? '#08121c' : '#05070b'; ctx.fillRect(0, 0, W, H);
   if (S.view === 'sfc') drawSurface(); else drawNet();
   if (S.view === 'lab' || S.view === 'deg' || S.view === 'alr') { ctx.fillStyle = 'rgba(5,7,11,.72)'; ctx.fillRect(0, 0, W, H); }
 }

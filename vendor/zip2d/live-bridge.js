@@ -1,7 +1,12 @@
 /* Same-origin bridge for parent map focus. Traffic and scenario playback stay in
    the original ZIP simulation engine, preserving its full synthetic network. */
 addEventListener('message', event => {
-  if (event.origin !== location.origin || event.source !== parent || event.data?.type !== 'airspace-zip-focus') return;
+  if (event.origin !== location.origin || event.source !== parent) return;
+  if (event.data?.type === 'airspace-zip-preview-zoom') {
+    if (PREVIEW_MODE && Number.isFinite(event.data.factor) && event.data.factor >= 0.5 && event.data.factor <= 2) zoomBy(event.data.factor);
+    return;
+  }
+  if (event.data?.type !== 'airspace-zip-focus') return;
   const id = String(event.data.id || '');
   if (AP[id]) {
     S.sel = id;

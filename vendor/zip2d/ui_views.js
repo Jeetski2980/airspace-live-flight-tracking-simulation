@@ -411,7 +411,14 @@ $('#guide').onclick = () => { const m = $('#modal'); m.classList.add('on'); m.in
   // baseline reference run (no scenario) — used for "expected" values and comparisons
   const b = runHeadless(newCfg(), HORIZON, SEED);
   S.runs.push({ id: 0, name: 'Baseline (no scenario)', color: RUN_COLORS[0], cfg: newCfg(), result: b.result, series: b.series });
-  newSim(newCfg()); fitUS();
+  newSim(newCfg());
+  if (PREVIEW_MODE) {
+    seek(120);
+    const area = freeArea();
+    cam.x = lon2x(-74.0);
+    cam.y = lat2y(40.7);
+    cam.s = Math.min(area.w / 5.4, area.h / 3.4);
+  } else fitUS();
   const h = location.hash.slice(1); if (['net', 'sfc', 'lab', 'deg', 'alr'].includes(h)) setView(h); else refreshPanels(true);
   requestAnimationFrame(frame);
   window.__S = S;

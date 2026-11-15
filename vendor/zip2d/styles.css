@@ -142,3 +142,6 @@ tr.bad td{background:rgba(255,77,94,.07)}
 .wxkey2 i.wd{height:0;border-top:2px solid rgba(250,235,175,.8);margin-top:8px}
 .wxkey2 i.st{width:12px;height:12px;border-radius:50%;border:2px solid rgba(255,90,110,.8);margin:2px 5px 0 5px}
 .wxkey2 i.xa{height:0;border-top:2px solid #f5b942;margin-top:8px}
+body.preview-mode{background:#05070b;overflow:hidden}
+body.preview-mode #brand,body.preview-mode #nav,body.preview-mode #topr,body.preview-mode main,body.preview-mode #zoomc,body.preview-mode #tl,body.preview-mode #modal{display:none!important}
+body.preview-mode #cv{cursor:grab}
