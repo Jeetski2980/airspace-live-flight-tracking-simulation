@@ -33,11 +33,11 @@ test("area requests are bounded to the contiguous United States", () => {
 test("placeholder credentials produce explicit setup states without calling providers", async () => {
   const oldOpenSkyId = process.env.OPENSKY_CLIENT_ID;
   const oldOpenSkySecret = process.env.OPENSKY_CLIENT_SECRET;
-  const oldOpenAiKey = process.env.OPENAI_API_KEY;
+  const oldGeminiKey = process.env.GEMINI_API_KEY;
   try {
     process.env.OPENSKY_CLIENT_ID = "your_opensky_client_id";
     process.env.OPENSKY_CLIENT_SECRET = "your_opensky_client_secret";
-    process.env.OPENAI_API_KEY = "your_openai_api_key";
+    process.env.GEMINI_API_KEY = "your_gemini_api_key";
     const live = await getLive(areaFromQuery(new URLSearchParams("area=local")));
     assert.equal(live.state, "not_configured");
     assert.deepEqual(live.aircraft, []);
@@ -50,8 +50,8 @@ test("placeholder credentials produce explicit setup states without calling prov
     else process.env.OPENSKY_CLIENT_ID = oldOpenSkyId;
     if (oldOpenSkySecret === undefined) delete process.env.OPENSKY_CLIENT_SECRET;
     else process.env.OPENSKY_CLIENT_SECRET = oldOpenSkySecret;
-    if (oldOpenAiKey === undefined) delete process.env.OPENAI_API_KEY;
-    else process.env.OPENAI_API_KEY = oldOpenAiKey;
+    if (oldGeminiKey === undefined) delete process.env.GEMINI_API_KEY;
+    else process.env.GEMINI_API_KEY = oldGeminiKey;
   }
 });
 
@@ -158,17 +158,20 @@ test("OpenSky network failures return a safe actionable message", async () => {
   }
 });
 
-test("AI returns a validated proposal without altering the live feed", async () => {
-  const oldOpenAiKey = process.env.OPENAI_API_KEY;
+test("Gemini returns a validated proposal without altering the live feed", async () => {
+  const oldGeminiKey = process.env.GEMINI_API_KEY;
+  const oldGeminiModel = process.env.GEMINI_MODEL;
   const oldFetch = globalThis.fetch;
   try {
-    process.env.OPENAI_API_KEY = "test_ai_key";
+    process.env.GEMINI_API_KEY = "test_gemini_key";
+    process.env.GEMINI_MODEL = "gemini-3.8-flash";
     globalThis.fetch = async (url, options) => {
-      assert.equal(url, "https://api.openai.com/v1/responses");
-      assert.equal(options.headers.Authorization, "Bearer test_ai_key");
+      assert.equal(url, "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent");
+      assert.equal(options.headers["x-goog-api-key"], "test_gemini_key");
       const request = JSON.parse(options.body);
-      assert.equal(request.text.format.type, "json_schema");
-      assert.equal(request.store, false);
+      assert.equal(request.generationConfig.responseFormat.text.mimeType, "application/json");
+      assert.equal(request.systemInstruction.parts.length, 1);
+      assert.equal(request.contents[0].role, "user");
       const output = {
         kind: "proposal", answer: "A synthetic JFK closure scenario is ready for review.",
         evidence: ["No observed live response was supplied."],
@@ -176,7 +179,7 @@ test("AI returns a validated proposal without altering the live feed", async () 
         proposal: { locationId: "JFK", eventType: "runway_closure", durationMinutes: 30,
           syntheticAircraftCount: 12, description: "Hypothetical capacity reduction for 30 minutes." },
       };
-      return new Response(JSON.stringify({ status: "completed", output: [{ type: "message", content: [{ type: "output_text", text: JSON.stringify(output) }] }] }), { status: 200 });
+      return new Response(JSON.stringify({ candidates: [{ finishReason: "STOP", content: { parts: [{ text: JSON.stringify(output) }] } }] }), { status: 200 });
     };
     const response = await askAssistant({ message: "What if JFK closes for 30 minutes?", context: { mode: "live", dataState: "not_configured", sourceTimestamp: null, aircraft: [] } });
     assert.equal(response.status, 200);
@@ -188,7 +191,9 @@ test("AI returns a validated proposal without altering the live feed", async () 
     assert.equal("liveAircraft" in response.body, false);
   } finally {
     globalThis.fetch = oldFetch;
-    if (oldOpenAiKey === undefined) delete process.env.OPENAI_API_KEY;
-    else process.env.OPENAI_API_KEY = oldOpenAiKey;
+    if (oldGeminiKey === undefined) delete process.env.GEMINI_API_KEY;
+    else process.env.GEMINI_API_KEY = oldGeminiKey;
+    if (oldGeminiModel === undefined) delete process.env.GEMINI_MODEL;
+    else process.env.GEMINI_MODEL = oldGeminiModel;
   }
 });
