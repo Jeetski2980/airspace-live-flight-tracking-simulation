@@ -4,11 +4,12 @@ import { GROQ_API_KEYS_URL, isLocalDevelopment, VERCEL_ENVIRONMENT_SETTINGS_URL 
 import type { AiReply, ScenarioProposal } from "../types";
 
 interface Message { role: "user" | "assistant"; text: string; reply?: AiReply }
+interface ProposalHandoffState { key: string; status: "pending" | "loaded" | "error"; message: string }
 interface Props {
   configured: boolean;
   providerState: string;
   context: object;
-  confirmationNotice?: string | null;
+  proposalHandoff?: ProposalHandoffState | null;
   onRunProposal: (proposal: ScenarioProposal) => void;
   onProviderChange: (state: string) => void;
   onClose: () => void;
@@ -19,17 +20,16 @@ const starterPrompts = [
   "What might happen during a 30 minute JFK runway closure?",
 ];
 
-export function Assistant({ configured, providerState, context, confirmationNotice, onRunProposal, onProviderChange, onClose }: Props) {
+export function Assistant({ configured, providerState, context, proposalHandoff, onRunProposal, onProviderChange, onClose }: Props) {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [confirmed, setConfirmed] = useState<string | null>(null);
   const transcriptEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     transcriptEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messages, busy, error, confirmationNotice]);
+  }, [messages, busy, error, proposalHandoff]);
 
   async function submit(text = input) {
     const message = text.trim();
@@ -99,13 +99,21 @@ export function Assistant({ configured, providerState, context, confirmationNoti
                 <div className="answer-meta"><span>Source</span>{message.reply.source}<span>Snapshot</span>{message.reply.sourceTimestamp ? new Date(message.reply.sourceTimestamp).toLocaleString() : "Unavailable"}</div>
                 {message.reply.evidence.length > 0 && <div className="answer-list"><strong>Data used</strong>{message.reply.evidence.map((item, i) => <span key={i}>{item}</span>)}</div>}
                 {message.reply.assumptions.length > 0 && <div className="answer-list"><strong>Assumptions</strong>{message.reply.assumptions.map((item, i) => <span key={i}>{item}</span>)}</div>}
-                {message.reply.proposal && <div className="proposal-review">
-                  <div className="proposal-review-heading"><span className="sim-tag">SIMULATION PROPOSAL</span><span>Review required</span></div>
+                {message.reply.proposal && (() => {
+                  const proposal = message.reply!.proposal!;
+                  const key = JSON.stringify([proposal.locationId, proposal.eventType, proposal.durationMinutes, proposal.syntheticAircraftCount, proposal.description]);
+                  const state = proposalHandoff?.key === key ? proposalHandoff.status : null;
+                  return <div className="proposal-review">
+                  <div className="proposal-review-heading"><span className="sim-tag">SIMULATION PROPOSAL</span><span>{state === "loaded" ? "Added · review before running" : "Review required"}</span></div>
                   <h3>Proposed scenario</h3>
-                  <dl><dt>Location</dt><dd>{message.reply.proposal.locationName}</dd><dt>Event</dt><dd>{message.reply.proposal.eventType.replaceAll("_", " ")}</dd><dt>Duration</dt><dd>{message.reply.proposal.durationMinutes} min</dd><dt>Traffic</dt><dd>{message.reply.proposal.syntheticAircraftCount} synthetic aircraft</dd></dl>
-                  <p>{message.reply.proposal.description}</p>
-                  <button className="button-primary full" onClick={() => { onRunProposal(message.reply!.proposal!); setConfirmed(String(index)); }}><Check size={15}/>{confirmed === String(index) ? "Loaded in Simulation" : "Review in Simulation"}</button>
-                </div>}
+                  <dl><dt>Location</dt><dd>{proposal.locationName}</dd><dt>Event</dt><dd>{proposal.eventType.replaceAll("_", " ")}</dd><dt>Duration</dt><dd>{proposal.durationMinutes} min</dd><dt>Traffic focus</dt><dd>{proposal.syntheticAircraftCount} synthetic aircraft</dd></dl>
+                  <p>{proposal.description}</p>
+                  <button className="button-primary full" disabled={state === "pending" || state === "loaded"} onClick={() => onRunProposal(proposal)}>
+                    {state === "loaded" ? <Check size={15}/> : <ArrowUp size={15}/>}
+                    {state === "loaded" ? "Added to Simulation" : state === "pending" ? "Adding to Simulation…" : state === "error" ? "Retry in Simulation" : "Review in Simulation"}
+                  </button>
+                </div>;
+                })()}
                 <div className="uncertain-note">AI summary · uncertain model estimate · not operational guidance.</div>
               </>}
             </div>
@@ -114,7 +122,7 @@ export function Assistant({ configured, providerState, context, confirmationNoti
         </div>)}
         {busy && <div className="assistant-turn assistant-turn-assistant"><div className="assistant-avatar" aria-hidden="true">A</div><div className="assistant-bubble assistant-thinking"><span/><span/><span/><em>Reviewing the map…</em></div></div>}
         {error && <div className="assistant-error" role="alert">{error}</div>}
-        {confirmationNotice && <div className="assistant-confirmation" role="status">{confirmationNotice}</div>}
+        {proposalHandoff?.message && <div className="assistant-confirmation" role={proposalHandoff.status === "error" ? "alert" : "status"}>{proposalHandoff.message}</div>}
       </>}
       <div ref={transcriptEndRef}/>
     </div>
