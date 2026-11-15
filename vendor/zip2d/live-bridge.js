@@ -2,6 +2,58 @@
    the original ZIP simulation engine, preserving its full synthetic network. */
 addEventListener('message', event => {
   if (event.origin !== location.origin || event.source !== parent) return;
+  if (event.data?.type === 'airspace-zip-scenario-proposal') {
+    const { requestId, proposal } = event.data;
+    const rejectProposal = () => parent.postMessage({ type: 'airspace-zip-proposal-result', requestId, status: 'error' }, location.origin);
+    if (new URLSearchParams(location.search).get('mode') !== 'simulation' || S.view !== 'lab'
+      || typeof requestId !== 'string' || requestId.length > 100 || !proposal || typeof proposal !== 'object') {
+      rejectProposal(); return;
+    }
+    if (S.aiProposalRequests.has(requestId)) {
+      parent.postMessage({ type: 'airspace-zip-proposal-result', requestId, status: 'loaded' }, location.origin);
+      return;
+    }
+    const locationId = String(proposal.locationId || '').toUpperCase();
+    const eventType = String(proposal.eventType || '');
+    const duration = Math.round(Number(proposal.durationMinutes));
+    const aircraftCount = Math.round(Number(proposal.syntheticAircraftCount));
+    if (!AP[locationId] || !['runway_closure', 'weather_delay', 'traffic_surge', 'generic_disruption'].includes(eventType)
+      || !Number.isInteger(duration) || duration < 5 || duration > 240
+      || !Number.isInteger(aircraftCount) || aircraftCount < 1 || aircraftCount > 40) {
+      rejectProposal(); return;
+    }
+    const start = Math.max(0, Math.min(HORIZON - duration, Math.floor(Number(proposal.startMinute) || 0)));
+    const description = String(proposal.description || 'AI-prepared hypothetical scenario.').slice(0, 220);
+    let staticEvents, modelNote;
+    if (eventType === 'runway_closure' && locationId === 'JFK') {
+      staticEvents = [{ k: 'rwy', ap: 'JFK', rwy: '13R/31L' }];
+      modelNote = 'Assumption: runway 13R/31L is used as the closure example.';
+    } else if (eventType === 'weather_delay') {
+      staticEvents = [{ k: 'wx', ap: locationId, type: 'Thunderstorms', sev: 0.65 }];
+      modelNote = 'Weather impact is represented by the model’s synthetic thunderstorm capacity effect.';
+    } else if (eventType === 'traffic_surge') {
+      staticEvents = [{ k: 'cap', ap: locationId, m: 0.82 }];
+      modelNote = 'The ZIP model keeps a fixed traffic volume, so a traffic surge is approximated as an 18% airport capacity stress; it does not add aircraft.';
+    } else if (eventType === 'runway_closure') {
+      staticEvents = [{ k: 'cap', ap: locationId, m: 0.7 }];
+      modelNote = 'The model has runway-specific closure effects only for JFK; this other-airport closure is approximated as a 30% capacity reduction.';
+    } else {
+      staticEvents = [{ k: 'cap', ap: locationId, m: 0.65 }];
+      modelNote = 'Generic disruption is represented as a 35% airport capacity reduction.';
+    }
+    const scenarioId = `ai_${Date.now()}_${S.uid++}`;
+    const scenarioName = `AI proposal · ${locationId} ${eventType.replaceAll('_', ' ')}`;
+    reg({
+      id: scenarioId, name: scenarioName, cat: 'AI proposal', start, dur: duration, restore: 0,
+      blurb: `${description} Assistant request: ${aircraftCount} synthetic-aircraft focus. This model applies effects to its full fixed synthetic network. ${modelNote}`,
+      params: [], staticEvents, custom: true,
+    });
+    S.cfg.stack.push(mkInst(scenarioId, { start, dur: duration, restore: 0 }));
+    S.aiProposalRequests.add(requestId);
+    renderLab();
+    parent.postMessage({ type: 'airspace-zip-proposal-result', requestId, status: 'loaded' }, location.origin);
+    return;
+  }
   if (event.data?.type === 'airspace-zip-view' && ['net', 'sfc', 'lab', 'deg', 'alr'].includes(event.data.view)) {
     setView(event.data.view);
     return;
