@@ -16,7 +16,7 @@ export const openAiProvider = {
       }),
     });
     if (!response.ok) {
-      const error = new Error(response.status === 401 ? "The AI key was rejected. Check OPENAI_API_KEY in .env.local."
+      const error = new Error(response.status === 401 ? "The AI key was rejected. Check OPENAI_API_KEY in the server environment."
         : response.status === 429 ? "The AI provider is rate limited. Try again later."
           : "The AI provider is unavailable or this model is inaccessible. Check OPENAI_MODEL and your provider account.");
       error.providerStatus = response.status;

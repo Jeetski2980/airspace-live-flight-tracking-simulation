@@ -9,6 +9,7 @@ import {
 import "cesium/Build/Cesium/Widgets/widgets.css";
 import { altitudeM, movePosition, POSITION_UPDATE_INTERVAL_MS } from "../data/flightMath";
 import { JFK } from "../data/locations";
+import { isLocalDevelopment } from "../data/setup";
 import type { Aircraft, AssetStatus, Location, MapKind, Trails } from "../types";
 
 const rawIonToken = import.meta.env.VITE_CESIUM_ION_TOKEN?.trim();
@@ -40,7 +41,8 @@ interface Props {
   onVisibleIds?: (ids: string[]) => void;
 }
 function safeIonMessage() {
-  return "Cesium ion content is unavailable. Check the token's assets:read scope, allowed assets, and allowed URLs in .env.local. A street map or Natural Earth fallback and an ellipsoid are shown instead.";
+  const settings = isLocalDevelopment() ? ".env.local" : "Vercel project Environment Variables";
+  return `Cesium ion content is unavailable. Check VITE_CESIUM_ION_TOKEN, its assets:read scope, allowed assets, and allowed URLs in ${settings}. A street map or Natural Earth fallback and an ellipsoid are shown instead.`;
 }
 function planeImage(color: string) {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><path d="M20 3c1.7 0 2 2.2 2 4v8.5l13 8v3l-13-3.5v8l4 3V37l-6-1.7-6 1.7v-2.5l4-3v-8L5 26.5v-3l13-8V7c0-1.8.3-4 2-4Z" fill="${color}" stroke="#071523" stroke-width="1.6" stroke-linejoin="round"/></svg>`;

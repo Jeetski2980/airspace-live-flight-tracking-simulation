@@ -67,7 +67,7 @@ function validatedProposal(proposal) {
   };
 }
 export async function askAssistant(body) {
-  if (!aiStatus().configured) return { status: 503, body: { error: "AI assistant not configured. Add OPENAI_API_KEY to .env.local and restart the app." } };
+  if (!aiStatus().configured) return { status: 503, body: { error: "AI assistant not configured. Add OPENAI_API_KEY to the server environment, then restart or redeploy." } };
   const message = typeof body?.message === "string" ? body.message.trim().slice(0, 1000) : "";
   if (!message) return { status: 400, body: { error: "Enter a question or hypothetical event." } };
   const context = validateContext(body.context);

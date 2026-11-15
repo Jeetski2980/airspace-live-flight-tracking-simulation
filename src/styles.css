@@ -14,3 +14,5 @@
 .map-attribution-note a,.preview-foot a{text-decoration:underline;text-underline-offset:2px;color:inherit}
 
 .focus-aircraft{width:100%;justify-content:center;margin:0 0 10px;font-size:11px}
+
+.setup-link{display:inline-flex;align-items:center;margin-top:10px;text-decoration:none}.setup-link:hover{text-decoration:underline}

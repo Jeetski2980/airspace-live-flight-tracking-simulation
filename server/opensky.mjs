@@ -51,8 +51,9 @@ async function accessToken() {
   if (token && Date.now() < tokenExpires - 60_000) return token;
   const body = new URLSearchParams({ grant_type: "client_credentials", client_id: process.env.OPENSKY_CLIENT_ID, client_secret: process.env.OPENSKY_CLIENT_SECRET });
   const response = await timeoutFetch(TOKEN_URL, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body });
-  if (!response.ok) throw new Error(response.status === 400 || response.status === 401 ? "OpenSky authentication failed. Check the client ID and secret in .env.local." : "OpenSky authentication is unavailable. Try again later.");
-  const data = await response.json();
+  if (!response.ok) throw new Error(response.status === 400 || response.status === 401 ? "OpenSky authentication failed. Check OPENSKY_CLIENT_ID and OPENSKY_CLIENT_SECRET in the server environment." : "OpenSky authentication is unavailable. Try again later.");
+  let data;
+  try { data = await response.json(); } catch { throw new Error("OpenSky did not return a usable access token."); }
   if (typeof data.access_token !== "string") throw new Error("OpenSky did not return a usable access token.");
   token = data.access_token;
   tokenExpires = Date.now() + Math.min(Number(data.expires_in) || 1800, 1800) * 1000;
@@ -71,7 +72,8 @@ async function statesRequest(area, retry = true) {
     throw new Error(`OpenSky rate limit reached. Retrying after ${Math.ceil(retryAfter / 60)} minute(s).`);
   }
   if (!response.ok) throw new Error(response.status >= 500 ? "OpenSky is temporarily unavailable." : `OpenSky request failed (HTTP ${response.status}).`);
-  const data = await response.json();
+  let data;
+  try { data = await response.json(); } catch { throw new Error("OpenSky returned an unreadable response. No new positions were used."); }
   if (!data || !(data.states === null || Array.isArray(data.states)) || !Number.isFinite(data.time)) throw new Error("OpenSky returned an unexpected response. No new positions were used.");
   return { aircraft: (data.states ?? []).map(normalizeState).filter(Boolean), snapshotTime: data.time * 1000 };
 }
@@ -98,7 +100,12 @@ async function refresh(area, current) {
     current.error = null;
     updateHistory(current, snapshot);
   } catch (error) {
-    current.error = error?.name === "TimeoutError" ? "OpenSky timed out. Showing the last successful response if available." : error?.message ?? "OpenSky could not be reached.";
+    const causeCode = typeof error?.cause?.code === "string" && /^[A-Z0-9_]{2,40}$/.test(error.cause.code) ? error.cause.code : null;
+    current.error = error?.name === "TimeoutError" || error?.name === "AbortError"
+      ? "OpenSky did not respond before the server timeout. Showing the last successful response if available."
+      : error?.message === "fetch failed"
+        ? `The AIRSPACE server could not connect to OpenSky${causeCode ? ` (${causeCode})` : ""}. Check server network access and OpenSky availability; showing the last successful response if available.`
+        : error?.message ?? "OpenSky could not be reached.";
   } finally {
     const lowCredits = remainingCredits !== null && remainingCredits < 1000;
     current.nextPollAt = Math.max(started + area.intervalMs * (lowCredits ? 3 : 1), rateLimitedUntil);
@@ -110,7 +117,7 @@ export async function getLive(area) {
   const configured = Boolean(process.env.OPENSKY_CLIENT_ID?.trim() && process.env.OPENSKY_CLIENT_SECRET?.trim()
     && !process.env.OPENSKY_CLIENT_ID.startsWith("your_") && !process.env.OPENSKY_CLIENT_SECRET.startsWith("your_"));
   if (!configured) {
-    return { state: "not_configured", configured: false, source: "OpenSky Network", area: area.label, bounds: area.bounds, aircraft: [], returnedCount: 0, positionedCount: 0, snapshotTime: null, lastSuccess: null, stale: false, error: "OpenSky is not configured. Add OPENSKY_CLIENT_ID and OPENSKY_CLIENT_SECRET to .env.local, then restart.", nextPollAt: null, remainingCredits: null, trails: {} };
+    return { state: "not_configured", configured: false, source: "OpenSky Network", area: area.label, bounds: area.bounds, aircraft: [], returnedCount: 0, positionedCount: 0, snapshotTime: null, lastSuccess: null, stale: false, error: "OpenSky is not configured. Add OPENSKY_CLIENT_ID and OPENSKY_CLIENT_SECRET to the server environment, then restart or redeploy.", nextPollAt: null, remainingCredits: null, trails: {} };
   }
   if (remainingCredits !== null && remainingCredits <= 100) {
     current.error = "OpenSky credit reserve reached. Polling paused to protect the daily allowance.";

@@ -40,7 +40,7 @@ test("placeholder credentials produce explicit setup states without calling prov
     const live = await getLive(areaFromQuery(new URLSearchParams("area=local")));
     assert.equal(live.state, "not_configured");
     assert.deepEqual(live.aircraft, []);
-    assert.match(live.error, /\.env\.local/);
+    assert.match(live.error, /server environment/);
     const assistant = await askAssistant({ message: "What is visible?" });
     assert.equal(assistant.status, 503);
     assert.match(assistant.body.error, /not configured/);
@@ -89,6 +89,29 @@ test("OpenSky OAuth2 stays server-side and a normalized snapshot is cached", asy
     assert.equal(second.snapshotTime, first.snapshotTime);
     assert.equal(calls.length, 2);
     assert.equal(JSON.stringify(first).includes("test_secret"), false);
+  } finally {
+    globalThis.fetch = oldFetch;
+    if (oldOpenSkyId === undefined) delete process.env.OPENSKY_CLIENT_ID;
+    else process.env.OPENSKY_CLIENT_ID = oldOpenSkyId;
+    if (oldOpenSkySecret === undefined) delete process.env.OPENSKY_CLIENT_SECRET;
+    else process.env.OPENSKY_CLIENT_SECRET = oldOpenSkySecret;
+  }
+});
+
+test("OpenSky network failures return a safe actionable message", async () => {
+  const oldOpenSkyId = process.env.OPENSKY_CLIENT_ID;
+  const oldOpenSkySecret = process.env.OPENSKY_CLIENT_SECRET;
+  const oldFetch = globalThis.fetch;
+  try {
+    process.env.OPENSKY_CLIENT_ID = "test_client";
+    process.env.OPENSKY_CLIENT_SECRET = "test_secret";
+    globalThis.fetch = async () => { throw new TypeError("fetch failed", { cause: { code: "ENOTFOUND" } }); };
+    const area = areaFromQuery(new URLSearchParams("lat=44&lon=-112"));
+    const result = await getLive(area);
+    assert.equal(result.state, "error");
+    assert.match(result.error, /could not connect to OpenSky/);
+    assert.match(result.error, /ENOTFOUND/);
+    assert.doesNotMatch(result.error, /^fetch failed$/);
   } finally {
     globalThis.fetch = oldFetch;
     if (oldOpenSkyId === undefined) delete process.env.OPENSKY_CLIENT_ID;

@@ -19,10 +19,10 @@ Open [http://127.0.0.1:5173/](http://127.0.0.1:5173/). The portal is at `/portal
 | Setting | Where it is read | Purpose |
 | --- | --- | --- |
 | `VITE_CESIUM_ION_TOKEN` | Browser, through `import.meta.env.VITE_CESIUM_ION_TOKEN` | Cesium aerial imagery, terrain, buildings, and general place search. This is a **public-client token**, not a private server secret. Restrict its `assets:read` scope, allowed assets, and allowed URLs in Cesium ion. |
-| `OPENSKY_CLIENT_ID` | Local API server only | OpenSky OAuth2 client credentials. |
-| `OPENSKY_CLIENT_SECRET` | Local API server only | OpenSky OAuth2 client credentials. |
-| `OPENAI_API_KEY` | Local API server only | Optional AI Assistant. |
-| `OPENAI_MODEL` | Local API server only | Optional model override; defaults to `gpt-5-mini`. |
+| `OPENSKY_CLIENT_ID` | API server only | OpenSky OAuth2 client credentials. |
+| `OPENSKY_CLIENT_SECRET` | API server only | OpenSky OAuth2 client credentials. |
+| `OPENAI_API_KEY` | API server only | Optional AI Assistant. |
+| `OPENAI_MODEL` | API server only | Optional model override; defaults to `gpt-5-mini`. |
 
 Do not use a `VITE_` prefix for OpenSky or AI credentials. `.env`, `.env.local`, and other local environment files are ignored by Git; `.env.example` is safe to share. The browser token is embedded in the client build by Vite, so do not use a broad or privileged ion token.
 
@@ -31,7 +31,7 @@ Do not use a `VITE_` prefix for OpenSky or AI credentials. `.env`, `.env.local`,
 - **Local 3D:** starts with the camera looking at JFK. Drag to pan and rotate, use the mouse wheel or map buttons to zoom, and tilt with Cesium's standard 3D controls. Select an aircraft and choose **Focus aircraft on map** to inspect its close-range 3D model. Search the included airport and city list without ion; an ion token enables wider geocoder search inside the contiguous U.S.
 - **US 2D:** a flat Cesium map you can pan and zoom. It requests one OpenSky bounding box for the contiguous U.S. and displays all valid returned positioned records on the map. The flight list caps its first render at 600 rows for responsiveness; filtering searches all returned records. Coverage and API results can be incomplete.
 - **Flights:** choose an aircraft in the map or list. The same selected ID is used in both map views. Unknown airline, type, origin, and destination stay **Unavailable**.
-- **Replay:** captures OpenSky snapshots in this server's memory while Live Data is active. It requires at least two captured updates. Restarting the server clears replay and recent paths; this does not call a historical OpenSky endpoint.
+- **Replay:** captures successful OpenSky snapshots in the browser session while Live Data is active, with the API process cache as an additional source. It requires at least two captured updates for the area. The current browser keeps up to 42 local-area frames or 12 U.S.-wide frames for one hour, so replay works across serverless function instances without storing traffic in a shared service. Recent paths are built from those frames; replay does not call a historical OpenSky endpoint.
 - **Simulation:** choose a preset, create a custom location/event/duration/count, or review an AI proposal. Start, pause, resume, reset, scrub time, and choose a speed from 0.5× to 8×. Aircraft position samples update every 10 seconds and the map animates between them from synthetic speed and track. Local sample speeds are 75–120 m/s; cross-country samples use 200–230 m/s. The comparison panel shows two synthetic scenarios and their assumptions. Its aggregate delay number is an abstract progress deficit, not a real airport delay forecast.
 - **AI Assistant:** when configured, asks the OpenAI Responses API about the visible map and can propose a synthetic scenario with a validated location, event type, duration, and traffic count. The proposal displays assumptions and waits for **Confirm & load simulation**. It cannot change the live feed, issue aircraft instructions, or start the scenario itself. When the key is absent, the panel says so.
 - **Data Status:** reports map layer and model status, OpenSky connection, last success, snapshot age, polling, and AI provider check state. “Configured · unverified” means no successful AI request has been observed yet.
@@ -78,4 +78,4 @@ Configure these variables in Vercel Project Settings → Environment Variables, 
 - `OPENSKY_CLIENT_ID` and `OPENSKY_CLIENT_SECRET` for live data. Keep both server-side and do not use a `VITE_` prefix.
 - `OPENAI_API_KEY` for the optional AI assistant.
 
-The portal and simulations work without provider credentials. Live OpenSky traffic and AI stay unavailable until their server variables are configured. Never commit `.env.local` or place server credentials in browser variables.
+For the Cesium variable, choose **Config** in Vercel because the `VITE_` value is public in the browser build. Keep OpenSky and OpenAI variables as **Secret** and server-side. After changing production variables, redeploy to apply them. The portal and simulations work without provider credentials. Live OpenSky traffic and AI stay unavailable until their server variables are configured. Never commit `.env.local` or place server credentials in browser variables.
