@@ -21,6 +21,16 @@ type Zip2DSnapshot = {
   assumptions: string[]; receivedAt: number;
 };
 type ServerStatus = { server: string; ai: { configured: boolean; state: string; provider: string } };
+type ProposalHandoff = {
+  requestId: string;
+  proposal: ScenarioProposal;
+  startMinute: number;
+};
+type ProposalHandoffState = { key: string; status: "pending" | "loaded" | "error"; message: string };
+
+function proposalKey(proposal: ScenarioProposal) {
+  return JSON.stringify([proposal.locationId, proposal.eventType, proposal.durationMinutes, proposal.syntheticAircraftCount, proposal.description]);
+}
 
 const initialQuery = new URLSearchParams(window.location.search);
 const initialMode: Mode = initialQuery.get("mode") === "simulation" ? "simulation" : "demo";
@@ -38,8 +48,10 @@ export function Portal() {
   const [serverStatus, setServerStatus] = useState<ServerStatus | null>(null);
   const [snapshot, setSnapshot] = useState<Zip2DSnapshot | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [confirmedProposal, setConfirmedProposal] = useState<ScenarioProposal | null>(null);
+  const [proposalHandoff, setProposalHandoff] = useState<ProposalHandoffState | null>(null);
   const zipFrameRef = useRef<HTMLIFrameElement>(null);
+  const zipFrameReadyRef = useRef(false);
+  const pendingProposalRef = useRef<ProposalHandoff | null>(null);
 
   const searchMatches = useMemo(() => searchText.trim()
     ? locations.filter(place => `${place.id} ${place.city} ${place.name}`.toLowerCase().includes(searchText.trim().toLowerCase())).slice(0, 6)
@@ -52,6 +64,21 @@ export function Portal() {
   useEffect(() => {
     const receive = (event: MessageEvent) => {
       if (event.origin !== window.location.origin || event.source !== zipFrameRef.current?.contentWindow) return;
+      if (event.data?.type === "airspace-zip-proposal-result") {
+        const pending = pendingProposalRef.current;
+        if (!pending || event.data.requestId !== pending.requestId) return;
+        const key = proposalKey(pending.proposal);
+        const loaded = event.data.status === "loaded";
+        setProposalHandoff({
+          key,
+          status: loaded ? "loaded" : "error",
+          message: loaded
+            ? `The ${pending.proposal.eventType.replaceAll("_", " ")} proposal for ${pending.proposal.locationId} is in the Simulation stack. Review its assumptions and settings before running it.`
+            : "The proposal could not be added to the Simulation stack. Check that its location and event are supported, then try again.",
+        });
+        pendingProposalRef.current = null;
+        return;
+      }
       if (event.data?.type === "airspace-zip-selected" && (typeof event.data.id === "string" || event.data.id === null)) {
         setSelectedId(event.data.id);
       }
@@ -81,6 +108,7 @@ export function Portal() {
     setMode(next);
     setSelectedId(null);
     setPanel("overview");
+    if (next !== mode) zipFrameReadyRef.current = false;
     if (next === "simulation") setZipView("lab");
     else setZipView("net");
   }
@@ -100,8 +128,18 @@ export function Portal() {
     if (panelName === "overview") showView("net");
   }
   function runProposal(proposal: ScenarioProposal) {
-    setConfirmedProposal(proposal);
+    const handoff: ProposalHandoff = {
+      requestId: `proposal-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      proposal,
+      startMinute: snapshot?.mode === "simulation" ? Math.max(0, Math.floor(snapshot.currentMinute)) : 0,
+    };
+    pendingProposalRef.current = handoff;
+    setProposalHandoff({ key: proposalKey(proposal), status: "pending", message: "Adding the reviewed proposal to the Simulation stack…" });
     setMode("simulation"); setZipView("lab"); setPanel("assistant");
+    if (mode !== "simulation") zipFrameReadyRef.current = false;
+    else if (zipFrameReadyRef.current) {
+      zipFrameRef.current?.contentWindow?.postMessage({ type: "airspace-zip-scenario-proposal", ...handoff }, window.location.origin);
+    }
   }
   function selectFlight(id: string) {
     setSelectedId(id); setPanel("flights");
@@ -149,13 +187,18 @@ export function Portal() {
         <button className="top-assistant" onClick={() => go(panel === "assistant" ? "overview" : "assistant")} aria-label={panel === "assistant" ? "Close AI assistant" : "Open AI assistant"}>Assistant</button>
       </header>
       {searchError && <div className="search-error" role="alert">{searchError}<button onClick={() => setSearchError(null)} aria-label="Dismiss search error"><X size={15}/></button></div>}
-      <iframe key={mode} ref={zipFrameRef} className="zip2d-frame" title="AeroFlo U.S. 2D flight workspace" src={`/zip2d/airspace.html?mode=${mode}#${zipView}`} onLoad={() => zipFrameRef.current?.contentWindow?.postMessage({ type: "airspace-zip-view", view: zipView }, window.location.origin)}/>
+      <iframe key={mode} ref={zipFrameRef} className="zip2d-frame" title="AeroFlo U.S. 2D flight workspace" src={`/zip2d/airspace.html?mode=${mode}#${zipView}`} onLoad={() => {
+        zipFrameReadyRef.current = true;
+        zipFrameRef.current?.contentWindow?.postMessage({ type: "airspace-zip-view", view: zipView }, window.location.origin);
+        const pending = pendingProposalRef.current;
+        if (mode === "simulation" && pending) zipFrameRef.current?.contentWindow?.postMessage({ type: "airspace-zip-scenario-proposal", ...pending }, window.location.origin);
+      }}/>
       {panel !== "overview" && <aside className={`portal-drawer ${panel === "assistant" ? "portal-drawer-assistant" : ""}`} aria-label={`${panel} panel`}>
         {panel === "assistant" ? <Assistant
           configured={Boolean(serverStatus?.ai.configured)}
           providerState={serverStatus?.ai.state ?? "unverified"}
           context={aiContext}
-          confirmationNotice={confirmedProposal ? `Proposal prepared for ${confirmedProposal.locationId}. Review the ${confirmedProposal.durationMinutes}-minute scenario with ${confirmedProposal.syntheticAircraftCount} synthetic aircraft in Simulation before starting it.` : null}
+          proposalHandoff={proposalHandoff}
           onRunProposal={runProposal}
           onProviderChange={state => setServerStatus(previous => previous ? { ...previous, ai: { ...previous.ai, state } } : previous)}
           onClose={() => setPanel("overview")}
