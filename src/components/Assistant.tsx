@@ -54,12 +54,12 @@ export function Assistant({ configured, providerState, context, proposalHandoff,
         ? "Error"
         : "Not tested";
 
-  return <section className="assistant-panel" aria-label="AeroFlo AI assistant">
+  return <section className="assistant-panel" aria-label="AVERY assistant">
     <header className="assistant-header">
       <div className="assistant-brand-mark" aria-hidden="true"><Plane size={15} fill="currentColor"/></div>
       <div className="assistant-title-block">
-        <h2>AeroFlo Assistant</h2>
-        <span>Map research companion</span>
+        <h2>AVERY</h2>
+        <span>Aviation Visibility &amp; Early-warning Response system</span>
       </div>
       <div className={`assistant-connection ${providerState === "working" ? "is-connected" : ""}`} role="status">
         <i className={`status-dot ${providerState === "working" ? "good" : "amber"}`}/>{providerLabel}
@@ -71,14 +71,14 @@ export function Assistant({ configured, providerState, context, proposalHandoff,
       <div className="assistant-intro-row">
         <div className="assistant-avatar" aria-hidden="true">A</div>
         <div className="assistant-bubble assistant-intro-bubble">
-          <div className="chat-message-label">AEROFLO ASSISTANT</div>
+          <div className="chat-message-label">AVERY</div>
           <p>What would you like to explore?</p>
           <span>Ask about the map or prepare a hypothetical scenario. You review every proposal before it loads into Simulation.</span>
         </div>
       </div>
 
       {!configured ? <div className="assistant-setup-card" role="status">
-        <div className="setup-card-heading"><i className="status-dot amber"/><strong>Assistant setup needed</strong></div>
+        <div className="setup-card-heading"><i className="status-dot amber"/><strong>AVERY setup needed</strong></div>
         <p>{isLocalDevelopment() ? <>Add <code>GROQ_API_KEY</code> to the local <code>.env.local</code> file and restart the server.</> : <>Add <code>GROQ_API_KEY</code> in the Vercel project environment settings, then redeploy.</>} The assistant uses this key on the server.</p>
         <div className="assistant-setup-actions">
           <a className="assistant-link-button" href={GROQ_API_KEYS_URL} target="_blank" rel="noreferrer">Get a Groq API key <span aria-hidden="true">↗</span></a>
@@ -92,7 +92,7 @@ export function Assistant({ configured, providerState, context, proposalHandoff,
         {messages.map((message, index) => <div className={`assistant-turn assistant-turn-${message.role}`} key={`${index}-${message.role}`}>
           {message.role === "assistant" && <div className="assistant-avatar" aria-hidden="true">A</div>}
           <div className="assistant-turn-content">
-            {message.role === "assistant" && <div className="assistant-response-label">AEROFLO ASSISTANT</div>}
+            {message.role === "assistant" && <div className="assistant-response-label">AVERY</div>}
             <div className={`assistant-bubble ${message.role === "user" ? "user-bubble" : ""}`}>
               <p>{message.text}</p>
               {message.reply && <>
@@ -120,7 +120,7 @@ export function Assistant({ configured, providerState, context, proposalHandoff,
             {message.reply && <div className="assistant-response-foot">Based on the visible map and model context</div>}
           </div>
         </div>)}
-        {busy && <div className="assistant-turn assistant-turn-assistant"><div className="assistant-avatar" aria-hidden="true">A</div><div className="assistant-bubble assistant-thinking"><span/><span/><span/><em>Reviewing the map…</em></div></div>}
+        {busy && <div className="assistant-turn assistant-turn-assistant"><div className="assistant-avatar" aria-hidden="true">A</div><div className="assistant-bubble assistant-thinking"><span/><span/><span/><em>AVERY is reviewing the map…</em></div></div>}
         {error && <div className="assistant-error" role="alert">{error}</div>}
         {proposalHandoff?.message && <div className="assistant-confirmation" role={proposalHandoff.status === "error" ? "alert" : "status"}>{proposalHandoff.message}</div>}
       </>}
@@ -130,7 +130,7 @@ export function Assistant({ configured, providerState, context, proposalHandoff,
     {configured
       ? <footer className="assistant-composer-wrap">
         <form className="assistant-composer" onSubmit={event => { event.preventDefault(); void submit(); }}>
-          <label className="sr-only" htmlFor="assistant-input">Ask the AeroFlo assistant</label>
+          <label className="sr-only" htmlFor="assistant-input">Ask AVERY</label>
           <textarea id="assistant-input" value={input} onChange={event => setInput(event.target.value)} onKeyDown={event => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void submit(); } }} placeholder="Ask a question or describe a scenario…" rows={2} maxLength={1000}/>
           <button aria-label="Send question" disabled={!input.trim() || busy} type="submit"><ArrowUp size={17}/></button>
         </form>
