@@ -1,9 +1,9 @@
-AIRSPACE generic aircraft model
+AeroFlo generic aircraft model
 
 Source: scripts/generate-aircraft.mjs in this project. The model is original
-geometry generated for AIRSPACE and contains no third-party mesh or texture.
+geometry generated for AeroFlo and contains no third-party mesh or texture.
 
-Copyright (c) 2026 AIRSPACE contributors
+Copyright (c) 2026 AeroFlo contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this model and associated source script (the "Software"), to deal in the

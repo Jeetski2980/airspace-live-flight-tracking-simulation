@@ -53,7 +53,7 @@ export function Assistant({ configured, providerState, context, onRunProposal, o
         {busy && <div className="chat-message assistant"><div className="chat-message-label">AI · THINKING</div><p>Reviewing the visible context…</p></div>}
       </div>
       {error && <div className="inline-error" role="alert">{error}</div>}
-      <form className="chat-form" onSubmit={event => { event.preventDefault(); void submit(); }}><label className="sr-only" htmlFor="assistant-input">Ask the AIRSPACE assistant</label><textarea id="assistant-input" value={input} onChange={event => setInput(event.target.value)} placeholder="Ask about this map or a hypothetical event…" rows={2} maxLength={1000}/><button aria-label="Send question" disabled={!input.trim() || busy} type="submit"><ArrowUp size={18}/></button></form>
+      <form className="chat-form" onSubmit={event => { event.preventDefault(); void submit(); }}><label className="sr-only" htmlFor="assistant-input">Ask the AeroFlo assistant</label><textarea id="assistant-input" value={input} onChange={event => setInput(event.target.value)} placeholder="Ask about this map or a hypothetical event…" rows={2} maxLength={1000}/><button aria-label="Send question" disabled={!input.trim() || busy} type="submit"><ArrowUp size={18}/></button></form>
     </>}
   </div>;
 }

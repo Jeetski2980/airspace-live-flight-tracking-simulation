@@ -1,4 +1,4 @@
-# AIRSPACE
+# AeroFlo
 
 An educational flight tracking and simulation portal. The landing page opens a portal with a CesiumJS Local 3D view, a self-contained U.S. 2D canvas view, and separate **Live Data** and **Simulation** modes. Live positions come only from OpenSky through the local server. Synthetic aircraft never enter the live feed.
 
@@ -28,10 +28,18 @@ To enable AI locally, create a Groq API key at [Groq Console](https://console.gr
 
 Do not use a `VITE_` prefix for OpenSky or AI credentials. `.env`, `.env.local`, and other local environment files are ignored by Git; `.env.example` is safe to share. The browser token is embedded in the client build by Vite, so do not use a broad or privileged ion token.
 
+## Sharing this project
+
+The share archive contains the full app source, the included 2D workspace, setup examples, and this guide. It intentionally excludes `.env.local`, other private environment files, `node_modules`, and generated build output. Each teammate should create their own `.env.local` from `.env.example` and use credentials issued to them or to the team. Do not send API keys in email/chat or commit them to source control.
+
+The AeroFlo landing page and Simulation Mode work without API credentials. Live OpenSky data, extended Cesium ion layers/search, and the Groq Assistant each require their own configuration. `GROQ_API_KEY`, `OPENSKY_CLIENT_ID`, and `OPENSKY_CLIENT_SECRET` are private server credentials. `VITE_CESIUM_ION_TOKEN` is intentionally included in browser code at build time; use a restricted public-client ion token and limit its allowed assets and URLs. The same variable names and visibility rules apply when configured in Vercel.
+
+When a teammate changes environment variables in Vercel, they must create a new deployment before the running app uses the updated configuration. Never use AeroFlo's Live Data view or its simulations for operational aviation decisions.
+
 ## Portal guide
 
 - **Local 3D:** starts with the camera looking at JFK. Drag to pan and rotate, use the mouse wheel or map buttons to zoom, and tilt with Cesium's standard 3D controls. Select an aircraft and choose **Focus aircraft on map** to inspect its close-range 3D model. Search the included airport and city list without ion; an ion token enables wider geocoder search inside the contiguous U.S.
-- **US 2D:** displays the supplied ZIP's complete standalone interface, assembled from its original source files in `vendor/zip2d/` and served as `public/zip2d/airspace.html`. Its Network, JFK Surface, What-If Lab, Degraded Ops, Alerts, layer switches, panels, timeline, map gestures, and styling are preserved. Its original schematic base map is self-contained and does not request a map API. In Live Data, a small same-origin bridge supplies AIRSPACE's OpenSky records and replaces the ZIP's synthetic flight display. In Simulation, the ZIP's original synthetic model and controls run inside the ZIP interface. The ZIP map's geography and sectors are schematic, not verified airspace boundaries.
+- **US 2D:** displays the supplied ZIP's complete standalone interface, assembled from its original source files in `vendor/zip2d/` and served as `public/zip2d/airspace.html`. Its Network, JFK Surface, What-If Lab, Degraded Ops, Alerts, layer switches, panels, timeline, map gestures, and styling are preserved. Its original schematic base map is self-contained and does not request a map API. In Live Data, a small same-origin bridge supplies AeroFlo's OpenSky records and replaces the ZIP's synthetic flight display. In Simulation, the ZIP's original synthetic model and controls run inside the ZIP interface. The ZIP map's geography and sectors are schematic, not verified airspace boundaries.
 - **Flights:** choose an aircraft in the map or list. The same selected ID is used in both map views. Unknown airline, type, origin, and destination stay **Unavailable**.
 - **Replay:** captures successful OpenSky snapshots in the browser session while Live Data is active, with the API process cache as an additional source. It requires at least two captured updates for the area. The current browser keeps up to 42 local-area frames or 12 U.S.-wide frames for one hour, so replay works across serverless function instances without storing traffic in a shared service. Recent paths are built from those frames; replay does not call a historical OpenSky endpoint.
 - **Simulation:** choose a preset, create a custom location/event/duration/count, or review an AI proposal. Start, pause, resume, reset, scrub time, and choose a speed from 0.5× to 8×. Aircraft position samples update every 10 seconds and the map animates between them from synthetic speed and track. Local sample speeds are 75–120 m/s; cross-country samples use 200–230 m/s. The comparison panel shows two synthetic scenarios and their assumptions. Its aggregate delay number is an abstract progress deficit, not a real airport delay forecast.
@@ -62,13 +70,13 @@ npm run build
 npm run preview
 ```
 
-`npm run preview` starts the API and the built Vite preview at [http://127.0.0.1:4173/](http://127.0.0.1:4173/). If a port is busy, stop the previous AIRSPACE process before starting another. The backend has `GET /api/status`, `GET /api/live?area=local&lat=40.6413&lon=-73.7781`, `GET /api/live?area=us`, `GET /api/replay`, and `POST /api/assistant`; API responses never include credential values. Network failures, bad OpenSky auth, rate limits, and missing AI or ion configuration appear in the portal's Data Status area.
+`npm run preview` starts the API and the built Vite preview at [http://127.0.0.1:4173/](http://127.0.0.1:4173/). If a port is busy, stop the previous AeroFlo process before starting another. The backend has `GET /api/status`, `GET /api/live?area=local&lat=40.6413&lon=-73.7781`, `GET /api/live?area=us`, `GET /api/replay`, and `POST /api/assistant`; API responses never include credential values. Network failures, bad OpenSky auth, rate limits, and missing AI or ion configuration appear in the portal's Data Status area.
 
 For a blank Local 3D map, inspect Data Status first, then the browser console and Network panel. Confirm that `/Cesium/` assets are being served and that the chosen imagery source is reachable. The U.S. 2D map needs no map token or tile service. For no live planes, check `/api/status`, OpenSky OAuth2 client configuration, `/api/live`, the selected area, the returned/positioned counts, and the snapshot age. A zero count can be a valid response; OpenSky does not promise complete surveillance.
 
 ## Reference and license notes
 
-The visual design is original AIRSPACE work inspired by product hierarchy and interaction patterns in PrepMind, Civello, Linear, and Ripple. The [2D flight demo](https://github.com/aaryanwadhwani1101/airspace-live-traffic) informed map, path, replay, and details behavior. The 2D workspace is copied from the user-provided `airspace-share_1.zip`; its `README.original.md` and source files are retained under `vendor/zip2d/`. Its live bridge only accepts messages from the AIRSPACE parent page on the same origin. The [Cesium JFK test](https://github.com/Jeetski2980/cesium-jfk-test) informed the Vite/Cesium asset setup and JFK starting view. The included 3D model has no third-party mesh or texture dependency. OpenStreetMap and Cesium content retain their displayed attributions in Local 3D; their separate service terms apply.
+The visual design is original AeroFlo work inspired by product hierarchy and interaction patterns in PrepMind, Civello, Linear, and Ripple. The [2D flight demo](https://github.com/aaryanwadhwani1101/airspace-live-traffic) informed map, path, replay, and details behavior. The 2D workspace is copied from the user-provided `airspace-share_1.zip`; its `README.original.md` and source files are retained under `vendor/zip2d/`. Its live bridge only accepts messages from the AeroFlo parent page on the same origin. The [Cesium JFK test](https://github.com/Jeetski2980/cesium-jfk-test) informed the Vite/Cesium asset setup and JFK starting view. The included 3D model has no third-party mesh or texture dependency. OpenStreetMap and Cesium content retain their displayed attributions in Local 3D; their separate service terms apply.
 
 ## Vercel deployment
 

@@ -51,7 +51,7 @@ export function simulationAircraft(scenario: Scenario, seconds: number): Aircraf
       id: `SIM-${String(index + 1).padStart(3, "0")}`, callsign: `SIM${String(index + 1).padStart(3, "0")}`, originCountry: null,
       latitude: next.latitude, longitude: next.longitude, geoAltitudeM: altitude, baroAltitudeM: null,
       groundSpeedMs: speed, trackDeg: track, verticalRateMs: 0, onGround: false,
-      positionTime: null, lastContact: null, positionSource: null, source: "AIRSPACE simulation",
+      positionTime: null, lastContact: null, positionSource: null, source: "AeroFlo simulation",
       kind: "simulated", positionKind: "simulated",
     };
   });

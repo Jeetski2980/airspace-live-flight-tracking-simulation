@@ -252,7 +252,7 @@ function renderDetail() {
   $('#alrLog').innerHTML = `<h3>Alert detail</h3>${a ? `<div class="card ${a.sev === 'critical' ? 'crit' : a.sev === 'warning' ? 'warn' : ''}"><div class="row"><span class="sev ${a.sev}"></span><b>${esc(a.title)}</b></div><div class="row" style="margin:6px 0;gap:6px">${tag(a.cls)}<span class="muted" style="font-size:11px">${a.cat} · raised ${clock(a.first)}</span></div>
   <div class="field"><label>What triggered it</label><div style="font-size:12px">${esc(a.trigger)}</div></div><div class="field"><label>Sources it relies on</label><div style="font-size:12px">${a.sources.map(esc).join(' · ')}</div></div><div class="field"><label>Where uncertainty remains</label><div style="font-size:12px">${esc(a.unc)}</div></div>
   <div class="field"><label>Options for human review (advisory)</label>${a.recs.map((r, i) => `<div style="font-size:12px;margin:4px 0">• ${esc(r)}<div class="row" style="margin-top:3px"><button class="btn sm" data-d="accepted" data-i="${i}">Accept</button><button class="btn sm" data-d="deferred" data-i="${i}">Defer</button><button class="btn sm dng" data-d="rejected" data-i="${i}">Reject</button></div></div>`).join('')}</div>
-  <div class="note">Accepting records a human decision only. AIRSPACE does not issue clearances, direct aircraft or activate procedures.</div></div>` : '<div class="empty">Select an alert to see what triggered it, which sources it uses and where uncertainty remains.</div>'}
+  <div class="note">Accepting records a human decision only. AeroFlo does not issue clearances, direct aircraft or activate procedures.</div></div>` : '<div class="empty">Select an alert to see what triggered it, which sources it uses and where uncertainty remains.</div>'}
   <h3 style="margin-top:14px">Human review log</h3>${S.decisions.length ? `<table>${S.decisions.slice(-12).reverse().map(d => `<tr><td class="mono">${clock(d.t)}</td><td><span class="pillst ${d.d === 'accepted' ? 'done' : d.d === 'rejected' ? 'blocked' : 'prog'}">${d.d.toUpperCase()}</span></td><td style="font-size:11.5px">${esc(d.rec)}<div class="muted">${esc(d.title)}</div></td></tr>`).join('')}</table>` : '<div class="empty">No decisions recorded.</div>'}`;
 }
 $('#alrFeed').addEventListener('click', e => { const f = e.target.closest('#alrF button'); if (f) { alrFilter = f.dataset.f; refreshPanels(true); return; } const c = e.target.closest('[data-al]'); if (c) { S.alertSel = +c.dataset.al; refreshPanels(true); } });
@@ -394,7 +394,7 @@ $('#modal').addEventListener('click', e => {
 });
 
 /* ---------- guide ---------- */
-$('#guide').onclick = () => { const m = $('#modal'); m.classList.add('on'); m.innerHTML = `<div class="box"><div class="row sb"><h2>AIRSPACE — how it works</h2><button class="btn sm" data-close="1">Close</button></div>
+$('#guide').onclick = () => { const m = $('#modal'); m.classList.add('on'); m.innerHTML = `<div class="box"><div class="row sb"><h2>AeroFlo — how it works</h2><button class="btn sm" data-close="1">Close</button></div>
   <p class="muted" style="margin:8px 0 12px">A human-supervised decision-support and training tool for air traffic control teams, centered on JFK. It organizes information, flags developing problems and lets teams rehearse disruptions. It never issues clearances, directs aircraft or activates procedures.</p>
   <div class="list" style="gap:8px;font-size:12.5px">
   <div><b>Network</b> — synthetic nationwide traffic across 30 airports and 20 ARTCC regions. Click an airport; watch how a JFK problem ripples through aircraft rotations to connecting airports.</div>
