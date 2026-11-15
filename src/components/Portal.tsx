@@ -4,7 +4,7 @@ import { CesiumMap, type MapHandle } from "./CesiumMap";
 import { Assistant } from "./Assistant";
 import { JFK, findLocation, locations } from "../data/locations";
 import { altitudeM, displayLivePosition, POSITION_UPDATE_INTERVAL_MS } from "../data/flightMath";
-import { GEMINI_API_KEYS_URL, isLocalDevelopment, VERCEL_ENVIRONMENT_SETTINGS_URL } from "../data/setup";
+import { GROQ_API_KEYS_URL, isLocalDevelopment, VERCEL_ENVIRONMENT_SETTINGS_URL } from "../data/setup";
 import { customScenario, presets, scenarioEstimate, scenarioFromProposal, simulationAircraft, simulationTrails } from "../sim/engine";
 import type { Aircraft, AssetStatus, EventType, LiveResponse, Location, MapKind, Mode, ReplayFrame, Scenario, ScenarioProposal, Trails } from "../types";
 
@@ -236,13 +236,13 @@ export function Portal() {
                 <div className="help-step"><span>01</span><div><strong>Install and start</strong><code>npm install<br/>npm run dev</code></div></div>
                 <div className="help-step"><span>02</span><div><strong>Configure Cesium</strong><p>Add <code>VITE_CESIUM_ION_TOKEN</code> to <code>.env.local</code>. This is a public-client token; restrict its allowed assets, scope, and URLs.</p></div></div>
                 <div className="help-step"><span>03</span><div><strong>Configure OpenSky</strong><p>Add these server-only variables to <code>.env.local</code>, then restart the local server:</p><code>OPENSKY_CLIENT_ID=your_client_id<br/>OPENSKY_CLIENT_SECRET=your_client_secret</code><p>Do not paste credentials into this page or chat.</p></div></div>
-                <div className="help-step"><span>04</span><div><strong>Enable AI if wanted</strong><p><a href={GEMINI_API_KEYS_URL} target="_blank" rel="noreferrer">Create a Gemini API key in Google AI Studio</a>. Put it in your local <code>.env.local</code> file:</p><code>GEMINI_API_KEY=your_gemini_api_key</code><p>Restart AIRSPACE and ask a question to check provider access. Keep this key on the server; don’t paste it into this page or chat.</p></div></div>
+                <div className="help-step"><span>04</span><div><strong>Enable AI if wanted</strong><p><a href={GROQ_API_KEYS_URL} target="_blank" rel="noreferrer">Create a Groq API key</a>. Put it in your local <code>.env.local</code> file:</p><code>GROQ_API_KEY=your_groq_api_key</code><p>Restart AIRSPACE and ask a question to check provider access. Keep this key on the server; don’t paste it into this page or chat.</p></div></div>
               </> : <>
                 <p className="panel-intro">Add keys in your Vercel project settings. AIRSPACE never collects or displays their values.</p>
                 <div className="help-step"><span>01</span><div><strong>Open environment settings</strong><p>Add each variable for the Production environment, then redeploy.</p><a className="text-button setup-link" href={VERCEL_ENVIRONMENT_SETTINGS_URL} target="_blank" rel="noreferrer">Open Vercel environment settings</a></div></div>
                 <div className="help-step"><span>02</span><div><strong>Cesium ion</strong><p>Add <code>VITE_CESIUM_ION_TOKEN</code> as <b>Config</b>. It is a public-client token embedded in the browser build; restrict its assets, scope, and allowed URLs.</p></div></div>
                 <div className="help-step"><span>03</span><div><strong>OpenSky live data</strong><p>Add <code>OPENSKY_CLIENT_ID</code> and <code>OPENSKY_CLIENT_SECRET</code> as <b>Secret</b>. These remain server-side.</p></div></div>
-                <div className="help-step"><span>04</span><div><strong>Optional AI assistant</strong><p><a href={GEMINI_API_KEYS_URL} target="_blank" rel="noreferrer">Create a Gemini API key in Google AI Studio</a>, then add it as <code>GEMINI_API_KEY</code> in Vercel. Keep it server-only. The assistant stays unavailable until a deployment includes it.</p></div></div>
+                <div className="help-step"><span>04</span><div><strong>Optional AI assistant</strong><p><a href={GROQ_API_KEYS_URL} target="_blank" rel="noreferrer">Create a Groq API key</a>, then add it as <code>GROQ_API_KEY</code> in Vercel. Keep it server-only. The assistant stays unavailable until a deployment includes it.</p></div></div>
                 <p className="microcopy">Never paste API keys into AIRSPACE or chat. Vercel applies changed variables to new deployments.</p>
               </>}
               <p className="microcopy">More details and service terms are in the project README.</p><button className="text-button" onClick={() => setPanel("status")}>Check data status <ArrowRight size={16}/></button></div>
