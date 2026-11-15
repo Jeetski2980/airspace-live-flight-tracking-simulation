@@ -167,7 +167,7 @@ export function Portal() {
         <button className={zipView === "net" && panel === "overview" ? "active" : ""} onClick={() => showView("net")}>US 2D</button>
         <button className={panel === "flights" ? "active" : ""} onClick={() => go("flights")}>Flights</button>
         <button className={zipView === "lab" ? "active" : ""} onClick={() => { setMode("simulation"); showView("lab"); }}>Simulation</button>
-        <button className={panel === "assistant" ? "active" : ""} onClick={() => go(panel === "assistant" ? "overview" : "assistant")}>AI Assistant</button>
+        <button className={panel === "assistant" ? "active" : ""} onClick={() => go(panel === "assistant" ? "overview" : "assistant")}>AVERY</button>
         <button className={panel === "status" ? "active" : ""} onClick={() => go("status")}>Data Status</button>
       </nav>
       <div className="sidebar-bottom"><button onClick={() => go("help")}>Setup & help</button><a href="/"><ArrowLeft size={16}/> Landing page</a></div>
@@ -184,7 +184,7 @@ export function Portal() {
           <button aria-pressed={mode === "demo"} onClick={() => changeMode("demo")}><span className="mode-indicator"/> Synthetic Demo</button>
           <button aria-pressed={mode === "simulation"} onClick={() => changeMode("simulation")}>Simulation</button>
         </div>
-        <button className="top-assistant" onClick={() => go(panel === "assistant" ? "overview" : "assistant")} aria-label={panel === "assistant" ? "Close AI assistant" : "Open AI assistant"}>Assistant</button>
+        <button className="top-assistant" onClick={() => go(panel === "assistant" ? "overview" : "assistant")} aria-label={panel === "assistant" ? "Close AVERY assistant" : "Open AVERY assistant"}>AVERY</button>
       </header>
       {searchError && <div className="search-error" role="alert">{searchError}<button onClick={() => setSearchError(null)} aria-label="Dismiss search error"><X size={15}/></button></div>}
       <iframe key={mode} ref={zipFrameRef} className="zip2d-frame" title="AeroFlo U.S. 2D flight workspace" src={`/zip2d/airspace.html?mode=${mode}#${zipView}`} onLoad={() => {
