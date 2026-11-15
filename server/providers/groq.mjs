@@ -1,11 +1,13 @@
 // Groq credentials are server-only. Never rename this to a VITE_ variable.
 function getApiKey() {
   let key = process.env.GROQ_API_KEY?.trim() ?? "";
-  for (let pass = 0; pass < 2; pass += 1) {
-    key = key.trim().replace(/^GROQ_API_KEY\s*=\s*/i, "").trim();
+  for (let pass = 0; pass < 4; pass += 1) {
+    const previous = key;
+    key = key.trim().replace(/^Bearer\s+/i, "").replace(/^GROQ_API_KEY\s*=\s*/i, "").trim();
     if ((key.startsWith('"') && key.endsWith('"')) || (key.startsWith("'") && key.endsWith("'"))) {
       key = key.slice(1, -1).trim();
     }
+    if (key === previous) break;
   }
   return key;
 }
@@ -80,7 +82,7 @@ export const groqProvider = {
 function createProviderError(status, providerMessage, schemaFailure) {
   let message;
   if (status === 401 || status === 403) {
-    message = "Groq rejected the Production API key. Replace GROQ_API_KEY with an active raw key without quotes or a GROQ_API_KEY= prefix, then redeploy.";
+    message = "Groq rejected the Production API key. Replace GROQ_API_KEY with an active raw key without quotes, a Bearer prefix, or a GROQ_API_KEY= label, then redeploy.";
   } else if (status === 429) {
     message = "Groq is rate limited. Try again later or check the limits for this API key.";
   } else if (schemaFailure) {
