@@ -134,12 +134,12 @@ test("Groq schema errors are sanitized if JSON fallback also fails", async () =>
   }
 });
 
-test("Groq accepts an accidentally quoted environment assignment", async () => {
+test("Groq strips common copy-and-paste wrappers from its key", async () => {
   const oldGroqKey = process.env.GROQ_API_KEY;
   const oldGroqModel = process.env.GROQ_MODEL;
   const oldFetch = globalThis.fetch;
   try {
-    process.env.GROQ_API_KEY = '"GROQ_API_KEY=test_groq_key"';
+    process.env.GROQ_API_KEY = '"Bearer GROQ_API_KEY=test_groq_key"';
     process.env.GROQ_MODEL = "openai/gpt-oss-20b";
     globalThis.fetch = async (_url, options) => {
       assert.equal(options.headers.Authorization, "Bearer test_groq_key");
