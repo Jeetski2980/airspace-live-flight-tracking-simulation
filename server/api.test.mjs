@@ -60,3 +60,76 @@ test("Groq returns a validated proposal using the synthetic demo source", async 
     if (oldGroqModel === undefined) delete process.env.GROQ_MODEL; else process.env.GROQ_MODEL = oldGroqModel;
   }
 });
+
+test("Groq schema mismatch falls back safely and forces a complete hypothetical proposal", async () => {
+  const oldGroqKey = process.env.GROQ_API_KEY;
+  const oldGroqModel = process.env.GROQ_MODEL;
+  const oldFetch = globalThis.fetch;
+  let calls = 0;
+  try {
+    process.env.GROQ_API_KEY = "test_groq_key";
+    delete process.env.GROQ_MODEL;
+    globalThis.fetch = async (_url, options) => {
+      calls += 1;
+      const request = JSON.parse(options.body);
+      if (calls === 1) {
+        assert.equal(request.response_format.type, "json_schema");
+        assert.equal(request.response_format.json_schema.strict, true);
+        return new Response(JSON.stringify({ error: { message: "Generated JSON does not match the expected schema; failed_generation omitted required fields." } }), { status: 400 });
+      }
+      if (calls === 2) {
+        assert.deepEqual(request.response_format, { type: "json_object" });
+        assert.match(request.messages[0].content, /Include every required property/);
+        // A valid JSON object can still be incomplete in Groq's JSON Object Mode.
+        return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ kind: "answer", answer: "The closure could increase modeled delays." }) } }] }), { status: 200 });
+      }
+      assert.equal(request.response_format.type, "json_schema");
+      assert.deepEqual(request.response_format.json_schema.schema.properties.kind.enum, ["proposal"]);
+      assert.equal(request.response_format.json_schema.schema.properties.proposal.type, "object");
+      const output = {
+        kind: "proposal", answer: "Review this hypothetical JFK runway closure setup.",
+        evidence: ["The map is using synthetic traffic."], assumptions: ["Only synthetic traffic is affected."],
+        proposal: { locationId: "JFK", eventType: "runway_closure", durationMinutes: 30,
+          syntheticAircraftCount: 12, description: "Model a 30 minute runway closure at JFK." },
+      };
+      return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(output) } }] }), { status: 200 });
+    };
+
+    const response = await askAssistant({
+      message: "What might happen during a 30 minute JFK runway closure?",
+      context: { view: "us", mode: "simulation", selectedAirport: "JFK", sourceTimestamp: null, aircraft: [] },
+    });
+    assert.equal(calls, 3);
+    assert.equal(response.status, 200);
+    assert.equal(response.body.kind, "proposal");
+    assert.equal(response.body.proposal.eventType, "runway_closure");
+    assert.equal(response.body.proposal.durationMinutes, 30);
+    assert.equal(response.body.proposal.syntheticAircraftCount, 12);
+    assert.deepEqual(response.body.assumptions, ["Only synthetic traffic is affected."]);
+  } finally {
+    globalThis.fetch = oldFetch;
+    if (oldGroqKey === undefined) delete process.env.GROQ_API_KEY; else process.env.GROQ_API_KEY = oldGroqKey;
+    if (oldGroqModel === undefined) delete process.env.GROQ_MODEL; else process.env.GROQ_MODEL = oldGroqModel;
+  }
+});
+
+test("Groq schema errors are sanitized if JSON fallback also fails", async () => {
+  const oldGroqKey = process.env.GROQ_API_KEY;
+  const oldFetch = globalThis.fetch;
+  let calls = 0;
+  try {
+    process.env.GROQ_API_KEY = "test_groq_key";
+    globalThis.fetch = async () => {
+      calls += 1;
+      if (calls === 1) return new Response(JSON.stringify({ error: { message: "Generated JSON does not match the expected schema." } }), { status: 400 });
+      return new Response(JSON.stringify({ error: { message: "failed_generation: private provider detail" } }), { status: 400 });
+    };
+    const response = await askAssistant({ message: "Explain the map.", context: { view: "us", aircraft: [] } });
+    assert.equal(response.status, 502);
+    assert.match(response.body.error, /Groq could not format a complete response/);
+    assert.doesNotMatch(response.body.error, /failed_generation|private provider detail/);
+  } finally {
+    globalThis.fetch = oldFetch;
+    if (oldGroqKey === undefined) delete process.env.GROQ_API_KEY; else process.env.GROQ_API_KEY = oldGroqKey;
+  }
+});
