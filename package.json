@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "predev": "node scripts/copy-cesium-assets.mjs && node scripts/generate-aircraft.mjs",
+    "predev": "node scripts/copy-cesium-assets.mjs && node scripts/generate-aircraft.mjs && node scripts/build-zip2d.mjs",
     "dev": "node scripts/dev.mjs",
-    "prebuild": "node scripts/copy-cesium-assets.mjs && node scripts/generate-aircraft.mjs",
+    "prebuild": "node scripts/copy-cesium-assets.mjs && node scripts/generate-aircraft.mjs && node scripts/build-zip2d.mjs",
     "build": "tsc -b && vite build",
     "preview": "node scripts/dev.mjs --preview",
     "test": "node --test server/*.test.mjs src/data/*.test.mjs"
